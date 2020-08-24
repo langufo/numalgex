@@ -1,112 +1,91 @@
 #include "CylSolver.hpp"
 
-CylSolver::CylSolver(double (*rhs)(double, double),
-                     PDESolver::BndryLayout neumLayout,
-                     double r0,
-                     double z0,
-                     double h,
-                     int nR,
-                     int nZ,
-                     const double* bottom,
-                     const double* top,
-                     const double* left,
-                     const double* right)
+CylSolver::CylSolver(double (*rhs)(double, double), BndryLayout neumLayout,
+                     double r0, double z0, double h, int nR, int nZ,
+                     const double *bottom, const double *top,
+                     const double *left, const double *right)
   : PDESolver(rhs, neumLayout, r0, z0, h, nR, nZ, bottom, top, left, right)
 {}
 
 double
-CylSolver::next_value(PDESolver::BndryLayout neum,
-                      double r,
-                      double z,
-                      double bottom,
-                      double top,
-                      double left,
-                      double right,
-                      double rhs)
+CylSolver::next_value(BndryLayout neum, double r, double z, double bottom,
+                      double top, double left, double right, double rhs) const
 {
-  double a = 0;
-  double c = 0;
+  double num = 0;
+  double denom = 0;
 
-  if (bool(neum & LEFTBNDRY) == bool(neum & RIGHTBNDRY)) {
-    if (neum & LEFTBNDRY) {
-      a += ((right + left) * h / r + right - left) * h / 2;
-    } else {
-      c += 2;
-      a += (right - left) * h / 2 / r + right + left;
-    }
-  } else {
-    if (neum & LEFTBNDRY) {
-      c += 2.0 / 3.0 * (1 + h / r);
-      a += ((right * 2 + left * h) * h / r + (right - left * h) * 2) / 3;
-    } else {
-      c += 2.0 / 3.0 * (1 - h / r);
-      a += ((right * h - left * 2) * h / r + (right * h + left) * 2) / 3;
-    }
+  switch (neum & (LEFTBNDRY | RIGHTBNDRY)) {
+    case 0:
+      denom += 6;
+      num += ((right - left) * h / r / 2 + right + left) * 3;
+      break;
+    case LEFTBNDRY:
+      denom += (1 + h / r) * 2;
+      num += (right * 2 + left * h) * h / r + (right - left * h) * 2;
+      break;
+    case RIGHTBNDRY:
+      denom += (1 - h / r) * 2;
+      num += (right * h - left * 2) * h / r + (right * h + left) * 2;
+      break;
+    default: // LEFTBNDRY | RIGHTBNDRY
+      num += ((right + left) * h / r + right - left) * h * 1.5;
   }
 
-  if (bool(neum & BOTTOMBNDRY) == bool(neum & TOPBNDRY)) {
-    if (neum & BOTTOMBNDRY) {
-      a += (top - bottom) * h / 2;
-    } else {
-      c += 2;
-      a += bottom + top;
-    }
-  } else {
-    c += 2.0 / 3.0;
-    if (neum & BOTTOMBNDRY) {
-      a += (top - bottom * h) * 2 / 3;
-    } else {
-      a += (bottom + top * h) * 2 / 3;
-    }
+  switch (neum & (BOTTOMBNDRY | TOPBNDRY)) {
+    case 0:
+      denom += 6;
+      num += (bottom + top) * 3;
+    case BOTTOMBNDRY:
+      denom += 2;
+      num += (top - bottom * h) * 2;
+    case TOPBNDRY:
+      denom += 2;
+      num += (bottom + top * h) * 2;
+    default: // BOTTOMBNDRY | TOPBNDRY
+      num += (top - bottom) * h * 1.5;
   }
 
-  return (a - rhs * h * h) / c;
+  return (num - rhs * h * h) / denom;
 }
 
 double
-CylSolver::residual(PDESolver::BndryLayout neum,
-                    double r,
-                    double z,
-                    double middle,
-                    double bottom,
-                    double top,
-                    double left,
-                    double right,
-                    double rhs)
+CylSolver::residual(PDESolver::BndryLayout neum, double r, double z,
+                    double middle, double bottom, double top, double left,
+                    double right, double rhs) const
 {
-  double a = 0;
+  double lhs = 0;
 
-  if (bool(neum & LEFTBNDRY) == bool(neum & RIGHTBNDRY)) {
-    if (neum & LEFTBNDRY) {
-      a += ((right + left) * h / r + right - left) * h / 2;
-    } else {
-      a += (right - left) * h / 2 / r + right + left - 2 * middle;
-    }
-  } else {
-    if (neum & LEFTBNDRY) {
-      a += (((right - middle) * 2 + left * h) * h / r +
-            (right - left * h - middle) * 2) /
-           3;
-    } else {
-      a += ((right * h + (middle - left) * 2) * h / r +
-            (right * h + left - middle) * 2) /
-           3;
-    }
+  switch (neum & (LEFTBNDRY | RIGHTBNDRY)) {
+    case 0:
+      lhs += (right - left) * h / 2 / r + right + left - 2 * middle;
+      break;
+    case LEFTBNDRY:
+      lhs += (((right - middle) * 2 + left * h) * h / r +
+              (right - left * h - middle) * 2) /
+             3;
+      break;
+    case RIGHTBNDRY:
+      lhs += ((right * h + (middle - left) * 2) * h / r +
+              (right * h + left - middle) * 2) /
+             3;
+      break;
+    default: // case LEFTBNDRY | RIGHTBNDRY:
+      lhs += ((right + left) * h / r + right - left) * h / 2;
   }
 
-  if (bool(neum & BOTTOMBNDRY) == bool(neum & TOPBNDRY)) {
-    if (neum & BOTTOMBNDRY) {
-      a += (top - bottom) * h / 2;
-    } else {
-      a += bottom + top - middle * 2;
-    }
-  } else {
-    if (neum & BOTTOMBNDRY) {
-      a += top + bottom * h - middle;
-    } else {
-      a += bottom + top * h - middle;
-    }
+  switch (neum & (BOTTOMBNDRY | TOPBNDRY)) {
+    case 0:
+      lhs += bottom + top - middle * 2;
+      break;
+    case BOTTOMBNDRY:
+      lhs += top + bottom * h - middle;
+      break;
+    case TOPBNDRY:
+      lhs += bottom + top * h - middle;
+      break;
+    default: // case BOTTOMBNDRY | TOPBNDRY:
+      lhs += (top - bottom) * h / 2;
   }
 
-  return a - rhs * h * h;
+  return lhs - rhs * h * h;
 }
