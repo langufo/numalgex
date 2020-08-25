@@ -8,7 +8,9 @@ SORSolver::SORSolver(double (*rhs)(double, double),
                      const double *top, const double *left, const double *right,
                      double w)
   : PDESolver(rhs, neumLayout, x0, y0, h, nX, nY, bottom, top, left, right),
-    w(w)
+    w(w),
+    revX(false),
+    revY(false)
 {}
 
 double
@@ -20,16 +22,15 @@ SORSolver::line_update(int i, int jInf, int jSup, BndryLayout neum,
 
   int step = revY ? -1 : 1;
   int jFirst = revY ? jSup : jInf;
-  int jLast = revY ? jInf : jSup;
 
-  for (int j = jFirst; j <= jLast; j += step) {
-    double d = w * (next_value(neum, x[i], y[j], *bottom, *top, *left, *right,
-                               mr[i][j]) -
-                    ms[i][j]);
+  for (int j = jFirst; j >= jInf && j <= jSup; j += step) {
+    double delta = w * (next_value(neum, x[i], y[j], *bottom, *top, *left,
+                                   *right, mr[i][j]) -
+                        ms[i][j]);
 
-    ms[i][j] += d;
+    ms[i][j] += delta;
 
-    sum += fabs(d);
+    sum += fabs(delta);
 
     top += step;
     bottom += step;
@@ -55,8 +56,7 @@ SORSolver::iter(double *sol, bool resAsErr)
     for (int d = 0; d < nRegY; ++d) {
       int q = revY ? nRegY - 1 - d : d;
 
-      int iFirst = revX ? limX[p][1] : limX[p][0];
-      int iLast = revX ? limX[p][0] : limX[p][1];
+      int iStart = revX ? limX[p][1] : limX[p][0];
       int jInf = limY[q][0];
       int jSup = limY[q][1];
 
@@ -64,36 +64,36 @@ SORSolver::iter(double *sol, bool resAsErr)
       int bStep, tStep;
 
       if (bndryY[q] & BOTTOMBNDRY) {
-        b = bottom + iFirst;
+        b = bottom + iStart;
         bStep = 1;
       } else {
-        b = ms[iFirst] + jInf - 1;
+        b = ms[iStart] + jInf - 1;
         bStep = nY;
       }
       if (bndryY[q] & TOPBNDRY) {
-        t = top + iFirst;
+        t = top + iStart;
         tStep = 1;
       } else {
-        t = ms[iFirst] + jInf + 1;
+        t = ms[iStart] + jInf + 1;
         tStep = nY;
       }
       if (bndryX[p] & LEFTBNDRY) {
         l = left + jInf;
       } else {
-        l = ms[iFirst - 1] + jInf;
+        l = ms[iStart - 1] + jInf;
       }
       if (bndryX[p] & RIGHTBNDRY) {
         r = right + jInf;
       } else {
-        r = ms[iFirst + 1] + jInf;
+        r = ms[iStart + 1] + jInf;
       }
 
-      if (revY) {
+      if (revX) {
         bStep = -bStep;
         tStep = -tStep;
       }
 
-      for (int i = iFirst; i != iLast; i += iStep) {
+      for (int i = iStart; i >= limX[p][0] && i <= limX[p][1]; i += iStep) {
         eps += line_update(i, jInf, jSup, neumLayout & (bndryX[p] | bndryY[q]),
                            b, t, l, r);
         b += bStep;
@@ -101,8 +101,6 @@ SORSolver::iter(double *sol, bool resAsErr)
         l += hStep;
         r += hStep;
       }
-      eps += line_update(iLast, jInf, jSup,
-                         neumLayout & (bndryX[p] | bndryY[q]), b, t, l, r);
     }
   }
   eps *= h * h;

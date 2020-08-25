@@ -1,28 +1,15 @@
 #include "EllSolver.hpp"
 
-EllSolver::EllSolver(double (*rhs)(double, double),
-                     BndryLayout neumLayout,
-                     double x0,
-                     double y0,
-                     double h,
-                     int nX,
-                     int nY,
-                     const double* bottom,
-                     const double* top,
-                     const double* left,
-                     const double* right)
+EllSolver::EllSolver(double (*rhs)(double, double), BndryLayout neumLayout,
+                     double x0, double y0, double h, int nX, int nY,
+                     const double *bottom, const double *top,
+                     const double *left, const double *right)
   : PDESolver(rhs, neumLayout, x0, y0, h, nX, nY, bottom, top, left, right)
 {}
 
 double
-EllSolver::next_value(BndryLayout neum,
-                      double x,
-                      double y,
-                      double bottom,
-                      double top,
-                      double left,
-                      double right,
-                      double rhs)
+EllSolver::next_value(BndryLayout neum, double x, double y, double bottom,
+                      double top, double left, double right, double rhs) const
 {
   double a = 0;
   double n = 0;
@@ -53,15 +40,9 @@ EllSolver::next_value(BndryLayout neum,
 }
 
 double
-EllSolver::residual(BndryLayout neum,
-                    double x,
-                    double y,
-                    double middle,
-                    double bottom,
-                    double top,
-                    double left,
-                    double right,
-                    double rhs)
+EllSolver::residual(BndryLayout neum, double x, double y, double middle,
+                    double bottom, double top, double left, double right,
+                    double rhs) const
 {
   double a = 0;
 

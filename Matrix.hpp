@@ -5,18 +5,15 @@ template<typename T>
 class Matrix
 {
 public:
-  Matrix(int cols, T* data = nullptr)
-    : n(cols)
-    , p(data)
-  {}
+  Matrix(int cols, T *data = nullptr) : n(cols), p(data) {}
 
-  T* operator[](int i) { return p + i * n; }
+  T *operator[](int i) const { return p + i * n; }
 
-  void set_first_elem(T* data) { p = data; }
+  void set_first_elem(T *data) { p = data; }
 
 private:
   int n;
-  T* p;
+  T *p;
 };
 
 #endif

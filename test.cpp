@@ -6,13 +6,15 @@
 #include "PDESolver.hpp"
 #include "SORCyl.hpp"
 
-#define SORONLY
-
-const double rInt = 0.1;
-const double rExt = 0.5;
+#define BNDRYCORR
 
 const double l = 1;
-const int n = 512;
+const int n = 128;
+
+const double h = l / (n + 1);
+
+const double rInt = h + n / 4 * h;
+const double rExt = h + n / 2 * h;
 
 const double tol = 1e-7;
 
@@ -37,10 +39,18 @@ pot_hollow_cyl(double r)
 double
 rhs(double r, double z)
 {
-  if (r <= rInt) {
+  if (r < rInt) {
     return 0;
+#ifdef BNDRYCORR
+  } else if (r == rInt) {
+    return 1;
+#endif
   } else if (r < rExt) {
     return 2;
+#ifdef BNDRYCORR
+  } else if (r == rExt) {
+    return 1;
+#endif
   } else {
     return 0;
   }
@@ -53,7 +63,6 @@ main()
 
   std::cout << std::scientific;
 
-  double h = l / (n + 1);
   double w = 2 / (1 + pi / (n + 2));
   double b[n], t[n], l[n], r[n];
 
@@ -88,11 +97,13 @@ main()
     JacobiCyl jSolv(rhs, neum, h, h, h, n, n, b, t, l, r);
     GSeidelCyl gsSolv(rhs, neum, h, h, h, n, n, b, t, l, r);
     SORCyl sorSolv(rhs, neum, h, h, h, n, n, b, t, l, r, w);
+    
+    gsSolv.rev_solv_direc(true, false);
 
 #ifndef SORONLY
     std::cout << "# Jacobi\n";
     zero(sol);
-    test(jSolv, sol, truth);
+//     test(jSolv, sol, truth);
 
     std::cout << "# Gauss-Seidel\n";
     zero(sol);

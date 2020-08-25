@@ -35,17 +35,20 @@ CylSolver::next_value(BndryLayout neum, double r, double z, double bottom,
     case 0:
       denom += 6;
       num += (bottom + top) * 3;
+      break;
     case BOTTOMBNDRY:
       denom += 2;
       num += (top - bottom * h) * 2;
+      break;
     case TOPBNDRY:
       denom += 2;
       num += (bottom + top * h) * 2;
+      break;
     default: // BOTTOMBNDRY | TOPBNDRY
       num += (top - bottom) * h * 1.5;
   }
 
-  return (num - rhs * h * h) / denom;
+  return (num - rhs * h * h * 3) / denom;
 }
 
 double
