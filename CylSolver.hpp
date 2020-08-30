@@ -1,12 +1,14 @@
 #ifndef CYLSOLVER_HPP
 #define CYLSOLVER_HPP
 
+#include <vector>
+
 #include "PDESolver.hpp"
 
 class CylSolver : public virtual PDESolver
 {
 protected:
-  CylSolver(double (*rhs)(double, double), BndryLayout neumLayout, double r0,
+  CylSolver(const double*rhs, BndryLayout neumLayout, double r0,
             double z0, double h, int nR, int nZ, const double *bottom,
             const double *top, const double *left, const double *right);
 

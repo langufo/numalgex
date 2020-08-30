@@ -5,11 +5,10 @@
 
 #include "Matrix.hpp"
 
-GSeidelSolver::GSeidelSolver(double (*rhs)(double, double),
-                             BndryLayout neumLayout, double x0, double y0,
-                             double h, int nX, int nY, const double *bottom,
-                             const double *top, const double *left,
-                             const double *right)
+GSeidelSolver::GSeidelSolver(const double *rhs, BndryLayout neumLayout,
+                             double x0, double y0, double h, int nX, int nY,
+                             const double *bottom, const double *top,
+                             const double *left, const double *right)
   : PDESolver(rhs, neumLayout, x0, y0, h, nX, nY, bottom, top, left, right)
 {}
 
@@ -22,6 +21,13 @@ GSeidelSolver::line_update(int i, int jInf, int jSup, BndryLayout neum,
 
   int step = revY ? -1 : 1;
   int jFirst = revY ? jSup : jInf;
+
+  if (revY) {
+    top += jSup - jInf;
+    bottom += jSup - jInf;
+    left += jSup - jInf;
+    right += jSup - jInf;
+  }
 
   for (int j = jFirst; j >= jInf && j <= jSup; j += step) {
     double old = ms[i][j];
@@ -56,7 +62,6 @@ GSeidelSolver::iter(double *s, bool resAsErr)
       int q = revY ? nRegY - 1 - d : d;
 
       int iStart = revX ? limX[p][1] : limX[p][0];
-      int iStop = revX ? limX[p][0] : limX[p][1];
       int jInf = limY[q][0];
       int jSup = limY[q][1];
 
@@ -64,26 +69,26 @@ GSeidelSolver::iter(double *s, bool resAsErr)
       int bStep, tStep;
 
       if (bndryY[q] & BOTTOMBNDRY) {
-        b = bottom + iStart;
+        b = bottom.data() + iStart;
         bStep = 1;
       } else {
         b = ms[iStart] + jInf - 1;
         bStep = nY;
       }
       if (bndryY[q] & TOPBNDRY) {
-        t = top + iStart;
+        t = top.data() + iStart;
         tStep = 1;
       } else {
         t = ms[iStart] + jInf + 1;
         tStep = nY;
       }
       if (bndryX[p] & LEFTBNDRY) {
-        l = left + jInf;
+        l = left.data() + jInf;
       } else {
         l = ms[iStart - 1] + jInf;
       }
       if (bndryX[p] & RIGHTBNDRY) {
-        r = right + jInf;
+        r = right.data() + jInf;
       } else {
         r = ms[iStart + 1] + jInf;
       }

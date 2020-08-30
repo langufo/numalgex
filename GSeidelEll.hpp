@@ -9,17 +9,9 @@ class GSeidelEll
   , public EllSolver
 {
 public:
-  GSeidelEll(double (*rhs)(double, double),
-             BndryLayout neumLayout,
-             double x0,
-             double y0,
-             double h,
-             int nX,
-             int nY,
-             const double* bottom,
-             const double* top,
-             const double* left,
-             const double* right);
+  GSeidelEll(const double *rhs, BndryLayout neumLayout, double x0, double y0,
+             double h, int nX, int nY, const double *bottom, const double *top,
+             const double *left, const double *right);
 };
 
 #endif

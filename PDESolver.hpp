@@ -21,7 +21,6 @@ public:
   virtual double iter(double *sol, bool resAsErr) = 0;
 
   typedef unsigned BndryLayout;
-  static const BndryLayout NOBNDRY = 0;
   static const BndryLayout TOPBNDRY = 1;
   static const BndryLayout LEFTBNDRY = 2;
   static const BndryLayout RIGHTBNDRY = 4;
@@ -29,8 +28,9 @@ public:
 
 protected:
   /**
-   * @param rhs Pointer to a function of the coordinates which acts as the right
-   * hand side of the PDE.
+   * @param rhs Pointer to an array containing the values of the right hand side
+   * of the PDE at the inner points of the lattice, ordered by x first, and then
+   * by y.
    * @param neumLayout Specifies for which sides of the boundary Neumann
    * boundary conditions are provided.
    * @param x0 The minimum value of x for an inner point.
@@ -45,9 +45,9 @@ protected:
    * the left side of the boundary.
    * @param right Like @p left, but for the right side.
    */
-  PDESolver(double (*rhs)(double, double), BndryLayout neumLayout, double x0,
-            double y0, double h, int nX, int nY, const double *bottom,
-            const double *top, const double *left, const double *right);
+  PDESolver(const double *rhs, BndryLayout neumLayout, double x0, double y0,
+            double h, int nX, int nY, const double *bottom, const double *top,
+            const double *left, const double *right);
 
   virtual double next_value(BndryLayout neum, double x, double y, double bottom,
                             double top, double left, double right,
@@ -93,28 +93,28 @@ protected:
    * side (where y is minimum) of the boundary, ordered by the value of x
    * they're associated with, from minimum to maximum.
    */
-  const double *bottom;
+  const std::vector<double> bottom;
 
   /**
    * Pointer to an array of nX elements containing the conditions for the top
    * side (where y is maximum) of the boundary, ordered by the value of x
    * they're associated with, from minimum to maximum.
    */
-  const double *top;
+  const std::vector<double> top;
 
   /**
    * Pointer to an array of nY elements containing the conditions for the left
    * side (where x is minimum) of the boundary, ordered by the value of y
    * they're associated with, from minimum to maximum.
    */
-  const double *left;
+  const std::vector<double> left;
 
   /**
    * Pointer to an array of nY elements containing the conditions for the right
    * side (where x is maximum) of the boundary, ordered by the value of y
    * they're associated with, from minimum to maximum.
    */
-  const double *right;
+  const std::vector<double> right;
 
   /**
    * Number of regions the lattice can be divided into along the x axis. They
@@ -155,8 +155,6 @@ protected:
   Matrix<double> ms;
 
 private:
-  void cache_rhs(double (*rhs)(double, double));
-
   std::vector<double> r;
 
 protected:

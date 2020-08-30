@@ -6,9 +6,9 @@
 class EllSolver : public virtual PDESolver
 {
 protected:
-  EllSolver(double (*rhs)(double, double), BndryLayout neumLayout, double x0,
-            double y0, double h, int nX, int nY, const double *bottom,
-            const double *top, const double *left, const double *right);
+  EllSolver(const double *rhs, BndryLayout neumLayout, double x0, double y0,
+            double h, int nX, int nY, const double *bottom, const double *top,
+            const double *left, const double *right);
 
   double next_value(PDESolver::BndryLayout neum, double x, double y,
                     double bottom, double top, double left, double right,

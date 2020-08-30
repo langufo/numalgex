@@ -5,11 +5,10 @@
 
 #include "Matrix.hpp"
 
-JacobiSolver::JacobiSolver(double (*rhs)(double, double),
-                           PDESolver::BndryLayout l, double x0, double y0,
-                           double h, int nX, int nY, const double *bottom,
-                           const double *top, const double *left,
-                           const double *right)
+JacobiSolver::JacobiSolver(const double *rhs, PDESolver::BndryLayout l,
+                           double x0, double y0, double h, int nX, int nY,
+                           const double *bottom, const double *top,
+                           const double *left, const double *right)
   : PDESolver(rhs, l, x0, y0, h, nX, nY, bottom, top, left, right),
     hBuff(nX),
     vBuff(nY)
@@ -77,14 +76,14 @@ JacobiSolver::iter(double *s, bool resAsErr)
       int tStep;
 
       if (bndryY[q] & TOPBNDRY) {
-        t = top + iFirst;
+        t = top.data() + iFirst;
         tStep = 1;
       } else {
         t = ms[iFirst] + jFirst + 1;
         tStep = nY;
       }
       if (bndryX[p] & RIGHTBNDRY) {
-        r = right + jFirst;
+        r = right.data() + jFirst;
       } else {
         r = ms[iFirst + 1] + jFirst;
       }

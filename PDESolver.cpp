@@ -6,26 +6,25 @@
 
 #include "Matrix.hpp"
 
-PDESolver::PDESolver(double (*rhs)(double, double), BndryLayout neumLayout,
-                     double x0, double y0, double h, int nX, int nY,
-                     const double *bottom, const double *top,
-                     const double *left, const double *right)
+PDESolver::PDESolver(const double *rhs, BndryLayout neumLayout, double x0,
+                     double y0, double h, int nX, int nY, const double *bottom,
+                     const double *top, const double *left, const double *right)
   : h(h),
     nX(nX),
     nY(nY),
     x(nX),
     y(nY),
     neumLayout(neumLayout),
-    bottom(bottom),
-    top(top),
-    left(left),
-    right(right),
-    bndryX{ LEFTBNDRY, NOBNDRY, RIGHTBNDRY },
-    bndryY{ BOTTOMBNDRY, NOBNDRY, TOPBNDRY },
+    bottom(bottom, bottom + nX),
+    top(top, top + nX),
+    left(left, left + nY),
+    right(right, right + nY),
+    bndryX{ LEFTBNDRY, 0, RIGHTBNDRY },
+    bndryY{ BOTTOMBNDRY, 0, TOPBNDRY },
     limX{ { 0, 0 }, { 1, nX - 2 } },
     limY{ { 0, 0 }, { 1, nY - 2 } },
     ms(nY),
-    r(nX * nY),
+    r(rhs, rhs + nX * nY),
     mr(nY, r.data())
 {
   for (int i = 0; i < nX; ++i) {
@@ -55,18 +54,6 @@ PDESolver::PDESolver(double (*rhs)(double, double), BndryLayout neumLayout,
    */
   bndryX[nRegX - 1] |= RIGHTBNDRY;
   bndryY[nRegY - 1] |= TOPBNDRY;
-
-  cache_rhs(rhs);
-}
-
-void
-PDESolver::cache_rhs(double (*rhs)(double, double))
-{
-  for (int i = 0; i < nX; ++i) {
-    for (int j = 0; j < nY; ++j) {
-      mr[i][j] = rhs(x[i], y[j]);
-    }
-  }
 }
 
 double
@@ -121,26 +108,26 @@ PDESolver::abs_res_sum() const
        * the bottom (top) boundary: then b -> b+1 (t -> t+1)
        */
       if (bndry & BOTTOMBNDRY) {
-        b = bottom + iFirst;
+        b = bottom.data() + iFirst;
         bStep = 1;
       } else {
         b = ms[iFirst] + jFirst - 1;
         bStep = nY;
       }
       if (bndry & TOPBNDRY) {
-        t = top + iFirst;
+        t = top.data() + iFirst;
         tStep = 1;
       } else {
         t = ms[iFirst] + jFirst + 1;
         tStep = nY;
       }
       if (bndry & LEFTBNDRY) {
-        l = left + jFirst;
+        l = left.data() + jFirst;
       } else {
         l = ms[iFirst - 1] + jFirst;
       }
       if (bndry & RIGHTBNDRY) {
-        r = right + jFirst;
+        r = right.data() + jFirst;
       } else {
         r = ms[iFirst + 1] + jFirst;
       }

@@ -3,9 +3,11 @@
 
 #include "GSeidelCyl.hpp"
 #include "JacobiCyl.hpp"
+#include "Matrix.hpp"
 #include "PDESolver.hpp"
 #include "SORCyl.hpp"
 
+#define SORONLY
 #define BNDRYCORR
 
 const double l = 1;
@@ -19,10 +21,10 @@ const double rExt = h + n / 2 * h;
 const double tol = 1e-7;
 
 void
-zero(double* s);
+zero(double *s);
 
 void
-test(PDESolver& solv, double* s, const double* t);
+test(PDESolver &solv, double *s, const double *t);
 
 double
 pot_hollow_cyl(double r)
@@ -79,9 +81,17 @@ main()
   }
   std::cout << "\n";
 
-  const char* intro[2] = { "Dirichlet only", "Dirichlet and Neumann" };
+  const char *intro[2] = { "Dirichlet only", "Dirichlet and Neumann" };
 
-  PDESolver::BndryLayout neum = PDESolver::NOBNDRY;
+  double rhsm[n * n] = {};
+  Matrix<double> m(n, rhsm);
+  for (int i = 0; i < n; ++i) {
+    for (int j = 0; j < n; ++j) {
+      m[i][j] = rhs((i + 1) * h, (j + 1) * h);
+    }
+  }
+
+  PDESolver::BndryLayout neum = 0;
   for (int i = 0; i < n; ++i) {
     b[i] = pot_hollow_cyl(h * (i + 1));
     t[i] = pot_hollow_cyl(h * (i + 1));
@@ -91,19 +101,19 @@ main()
 
   double sol[n * n];
 
-  for (const char* intro : intro) {
+  for (const char *intro : intro) {
     std::cout << "# " << intro << "\n\n";
 
-    JacobiCyl jSolv(rhs, neum, h, h, h, n, n, b, t, l, r);
-    GSeidelCyl gsSolv(rhs, neum, h, h, h, n, n, b, t, l, r);
-    SORCyl sorSolv(rhs, neum, h, h, h, n, n, b, t, l, r, w);
-    
+    JacobiCyl jSolv(rhsm, neum, h, h, h, n, n, b, t, l, r);
+    GSeidelCyl gsSolv(rhsm, neum, h, h, h, n, n, b, t, l, r);
+    SORCyl sorSolv(rhsm, neum, h, h, h, n, n, b, t, l, r, w);
+
     gsSolv.rev_solv_direc(true, false);
 
 #ifndef SORONLY
     std::cout << "# Jacobi\n";
     zero(sol);
-//     test(jSolv, sol, truth);
+    //     test(jSolv, sol, truth);
 
     std::cout << "# Gauss-Seidel\n";
     zero(sol);
@@ -124,7 +134,7 @@ main()
 }
 
 void
-zero(double* s)
+zero(double *s)
 {
   for (int i = 0; i < n * n; ++i) {
     s[i] = 0;
@@ -132,7 +142,7 @@ zero(double* s)
 }
 
 void
-test(PDESolver& solv, double* s, const double* t)
+test(PDESolver &solv, double *s, const double *t)
 {
   double h = l / (n + 1);
 
