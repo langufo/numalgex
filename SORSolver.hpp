@@ -1,27 +1,21 @@
 #ifndef SORPDE_HPP
 #define SORPDE_HPP
 
+#include "PDE.hpp"
 #include "PDESolver.hpp"
+#include "Real.hpp"
 
-class SORSolver : public virtual PDESolver
+class SORSolver : public PDESolver
 {
 public:
-  SORSolver(const double *rhs, BndryLayout neumLayout, double x0, double y0,
-            double h, int nX, int nY, const double *bottom, const double *top,
-            const double *left, const double *right, double w);
+  SORSolver(Real x0, Real y0, Real h, int nX, int nY, Real w);
 
-  double iter(double *sol, bool resAsErr) final override;
+  Real iter(Real * sol, const PDE & pde) override;
+
   void rev_solv_direc(bool revX, bool revY);
 
 private:
-  double line_update(int i, int jInf, int jSup, BndryLayout neum,
-                     const double *bottom, const double *top,
-                     const double *left, const double *right);
-
-  double w;
-
-  bool revX;
-  bool revY;
+  Real w;
 };
 
 #endif

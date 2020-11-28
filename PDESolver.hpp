@@ -3,34 +3,38 @@
 
 #include <vector>
 
-#include "Matrix.hpp"
+#include "BndryProp.hpp"
+#include "PDE.hpp"
+#include "Real.hpp"
 
 class PDESolver
 {
 public:
+  virtual ~PDESolver() {}
+
   /**
    * @brief Refine an approximated solution.
-   * @param sol Pointer to the start of a contiguous region of memory holding
-   * the initial guess for the solution to be overwritten. The values are
-   * ordered by x first, and then by y.
+   * @param sol Pointer to an array holding the initial guess for the solution
+   * to be overwritten. The values are ordered by x first, and then by y.
    * @param resAsErr If true, the error reported by this method is the sum of
    * (the absolute values of) the residuals; otherwise, it's the sum of (the
    * absolute values of) the corrections applied at each point in the lattice.
-   * @return The error of the refined solution as per resAsErr.
+   * @return The sum of the absolute values of the corrections applied at each
+   * point in the lattice.
    */
-  virtual double iter(double *sol, bool resAsErr) = 0;
+  virtual Real iter(Real * sol, const PDE & pde) = 0;
 
-  typedef unsigned BndryLayout;
-  static const BndryLayout TOPBNDRY = 1;
-  static const BndryLayout LEFTBNDRY = 2;
-  static const BndryLayout RIGHTBNDRY = 4;
-  static const BndryLayout BOTTOMBNDRY = 8;
+  /**
+   * @return The sum over all the points in the lattice of the absolute values
+   * of the residuals.
+   */
+  Real abs_res_sum(Real * sol, const PDE & pde) const;
 
 protected:
   /**
-   * @param rhs Pointer to an array containing the values of the right hand side
-   * of the PDE at the inner points of the lattice, ordered by x first, and then
-   * by y.
+   * @param rhs Pointer to an array containing the values of the right-hand
+   * side of the PDE at the inner points of the lattice, ordered by x first,
+   * and then by y.
    * @param neumLayout Specifies for which sides of the boundary Neumann
    * boundary conditions are provided.
    * @param x0 The minimum value of x for an inner point.
@@ -41,32 +45,37 @@ protected:
    * @param bottom Pointer to an array of nX elements containing the conditions
    * on the bottom side of the boundary.
    * @param top Like @p bottom, but for the top side.
-   * @param left Pointer to an array of nY elements containing the conditions on
-   * the left side of the boundary.
+   * @param left Pointer to an array of nY elements containing the conditions
+   * on the left side of the boundary.
    * @param right Like @p left, but for the right side.
    */
-  PDESolver(const double *rhs, BndryLayout neumLayout, double x0, double y0,
-            double h, int nX, int nY, const double *bottom, const double *top,
-            const double *left, const double *right);
+  PDESolver(Real x0, Real y0, Real h, int nX, int nY);
 
-  virtual double next_value(BndryLayout neum, double x, double y, double bottom,
-                            double top, double left, double right,
-                            double rhs) const = 0;
-
-  virtual double residual(BndryLayout neum, double x, double y, double middle,
-                          double bottom, double top, double left, double right,
-                          double rhs) const = 0;
-
-  double line_error(int i, int jFirst, int jLast, BndryLayout neum,
-                    const double *bottom, const double *top, const double *left,
-                    const double *right) const;
-
-  double abs_res_sum() const;
+  /**
+   * @param i Index of the desired x coordinate inside vector x.
+   * @param j Index of the desired y coordinate inside vector y.
+   * @param bndry Bitfield to flag the sides of the boundary the point at (x,y)
+   * is a neighbour of.
+   * @param b Reference to a pointer to point to the value at (x, y-h).
+   * @param t Reference to a pointer to point to the value at (x, y+h).
+   * @param l Reference to a pointer to point to the value at (x-h, y).
+   * @param r Reference to a pointer to point to the value at (x+h, y).
+   * @param bStep Offset that makes b point to the value at (x+h, y-h).
+   * @param tStep Offset that makes t point to the value at (x+h, y+h).
+   */
+  void init_point_bndry(int i,
+                        int j,
+                        const Real * sol,
+                        const PDE & pde,
+                        const Real *& b,
+                        const Real *& t,
+                        const Real *& l,
+                        const Real *& r) const;
 
   /**
    * Distance between adjacent points in the lattice.
    */
-  double h;
+  Real h;
 
   /**
    * Number of inner points along the x axis; alternatively, number of rows in
@@ -80,41 +89,20 @@ protected:
    */
   int nY;
 
-  std::vector<double> x, y;
-
-  /**
-   * Specifies the sides of the boundary for which Neumann boundary conditions
-   * are provided.
-   */
-  BndryLayout neumLayout;
-
-  /**
-   * Pointer to an array of nX elements containing the conditions for the bottom
-   * side (where y is minimum) of the boundary, ordered by the value of x
-   * they're associated with, from minimum to maximum.
-   */
-  const std::vector<double> bottom;
-
-  /**
-   * Pointer to an array of nX elements containing the conditions for the top
-   * side (where y is maximum) of the boundary, ordered by the value of x
-   * they're associated with, from minimum to maximum.
-   */
-  const std::vector<double> top;
-
-  /**
-   * Pointer to an array of nY elements containing the conditions for the left
-   * side (where x is minimum) of the boundary, ordered by the value of y
-   * they're associated with, from minimum to maximum.
-   */
-  const std::vector<double> left;
-
-  /**
-   * Pointer to an array of nY elements containing the conditions for the right
-   * side (where x is maximum) of the boundary, ordered by the value of y
-   * they're associated with, from minimum to maximum.
-   */
-  const std::vector<double> right;
+#ifndef ON_THE_FLY
+  std::vector<Real> x, y;
+#else
+  class OTF
+  {
+  public:
+    OTF(Real z0, Real h)
+      : z0(z0)
+      , h(h)
+    {}
+    Real operator[](int k) const { return z0 + k * h; }
+    Real z0, h;
+  } x, y;
+#endif
 
   /**
    * Number of regions the lattice can be divided into along the x axis. They
@@ -132,13 +120,13 @@ protected:
    * Specifies for each of the regions along the x axis whether they border the
    * left or right boundary.
    */
-  BndryLayout bndryX[3];
+  BndryProp bndryX[3];
 
   /**
    * Specifies for each of the regions along the y axis whether they border the
    * top or bottom boundary.
    */
-  BndryLayout bndryY[3];
+  BndryProp bndryY[3];
 
   /**
    * The first and last lattice row index for each of the regions along the x
@@ -147,18 +135,10 @@ protected:
   int limX[3][2];
 
   /**
-   * The first and last lattice column index for each of the regions along the y
-   * axis.
+   * The first and last lattice column index for each of the regions along the
+   * y axis.
    */
   int limY[3][2];
-
-  Matrix<double> ms;
-
-private:
-  std::vector<double> r;
-
-protected:
-  Matrix<double> mr;
 };
 
 #endif

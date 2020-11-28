@@ -3,22 +3,27 @@
 
 #include <vector>
 
+#include "PDE.hpp"
 #include "PDESolver.hpp"
+#include "Real.hpp"
 
-class JacobiSolver : public virtual PDESolver
+class JacobiSolver : public PDESolver
 {
 public:
-  JacobiSolver(const double *rhs, BndryLayout l, double x0, double y0, double h,
-               int nX, int nY, const double *bottom, const double *top,
-               const double *left, const double *right);
+  JacobiSolver(Real x0, Real y0, Real h, int nX, int nY);
 
-  double iter(double *s, bool resAsErr) final;
+  Real iter(Real * sol, const PDE & pde) override;
 
 private:
-  double line_update(int i, int jFirst, int jLast, BndryLayout neum,
-                     const double *top, const double *right);
+  /**
+   * Vector spanning along the x axis.
+   */
+  std::vector<Real> hBuff;
 
-  std::vector<double> hBuff, vBuff;
+  /**
+   * Vector spanning along the y axis.
+   */
+  std::vector<Real> vBuff;
 };
 
 #endif
