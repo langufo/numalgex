@@ -80,16 +80,16 @@ PDESolver::abs_res_sum(Real * sol, const PDE & pde) const
       for (int i = iInf; i <= iSup; ++i) {
         for (int j = jInf; j <= jSup; ++j) {
           int k = j - jInf;
-          sum += std::fabs(pde.residual(x[i],
-                                        y[j],
-                                        ms[i][j],
-                                        mr[i][j],
-                                        pde.neum & bndry,
-                                        b[k],
-                                        t[k],
-                                        l[k],
-                                        r[k],
-                                        h));
+          sum += std::abs(pde.residual(x[i],
+                                       y[j],
+                                       ms[i][j],
+                                       mr[i][j],
+                                       pde.neum & bndry,
+                                       b[k],
+                                       t[k],
+                                       l[k],
+                                       r[k],
+                                       h));
         }
 
         /* moving the pointers from x to x+h */

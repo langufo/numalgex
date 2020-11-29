@@ -84,7 +84,7 @@ main(int argc, char * argv[])
 
   long a = n / 8 + 1;
   long b = n / 16 + 1;
-  long l = n / 32 + 1;
+  long l = n / 16 + 1;
 
   long a2 = a * a;
   long b2 = b * b;

@@ -83,7 +83,7 @@ main(int argc, char * argv[])
 
   Real h = static_cast<Real>(1) / (n + 1);
 
-  long a = n / 32 + 1;
+  long a = n / 8 + 1;
 
   for (int i = 0; i < n; ++i) {
     for (int j = 0; j < n; ++j) {
@@ -100,12 +100,12 @@ main(int argc, char * argv[])
   }
 
   for (int i = 0; i < n; ++i) {
-    Real d2 = (i - n / 2) * (i - n / 2) + (n + 1) * (n + 1);
-    Real d3 = d2 * std::sqrt(d2);
-    Real coeff = 3 * a * a * a * a * h * h / (4 * d3);
-    r[i] = coeff * (i - n / 2);
-    t[i] = coeff * (n - n / 2);
-    b[i] = coeff * (-1 - n / 2);
+    long d2 = (i - n / 2) * (i - n / 2) + (n + 1) * (n + 1);
+    Real coeff = 3 * a * a * a * a * h * h / 4;
+    r[i] = coeff * (i - n / 2) / (d2 * std::sqrt(d2));
+    d2 = (i + 1) * (i + 1) + (n - n / 2) * (n - n / 2);
+    t[i] = coeff * (n - n / 2) / (d2 * std::sqrt(d2));
+    b[i] = coeff * (-1 - n / 2) / (d2 * std::sqrt(d2));
   }
 
   PDE pde;
@@ -120,16 +120,16 @@ main(int argc, char * argv[])
 
   Real w = 2 / (1 + 2 * std::acos(static_cast<Real>(0)) / (n + 2));
 
-  SORSolver solvFast(h, h, h, n, n, w);
+  SORSolver solvFast(h, -n / 2 * h, h, n, n, w);
 
   PDESolver * otherSolv = nullptr;
 
   switch (algo) {
     case 1:
-      otherSolv = new GSeidelSolver(h, h, h, n, n);
+      otherSolv = new GSeidelSolver(h, -n / 2 * h, h, n, n);
       break;
     case 2:
-      otherSolv = new JacobiSolver(h, h, h, n, n);
+      otherSolv = new JacobiSolver(h, -n / 2 * h, h, n, n);
       break;
   }
 
