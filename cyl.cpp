@@ -67,12 +67,13 @@ main(int argc, char * argv[])
   long a = n / 2 + 1;
   long a2 = a * a;
 
-  for (long j = 0; j < n; ++j) {
-    nonzero[j] = pot_cyl(1, a2 * h2);
+  for (long i = 0; i < n; ++i) {
+    Real r2 = (i + 1) * (i + 1) * h2;
+    an[i] = pot_cyl(r2, a2 * h2);
+    nonzero[i] = pot_cyl(1, a2 * h2);
   }
 
   Matrix<Real> m(n, rhs.data());
-
   for (int i = 0; i < n; ++i) {
     for (int j = 0; j < n; ++j) {
       if (i + 1 < a) {
@@ -93,16 +94,11 @@ main(int argc, char * argv[])
   pde.next_value = CylinderPDE::next_value;
   pde.residual = CylinderPDE::residual;
   pde.bottom = zero.data();
-  pde.right = zero.data();
+  pde.right = nonzero.data();
   pde.left = zero.data();
   pde.top = zero.data();
   pde.neum = BOTTOMBNDRY | LEFTBNDRY | TOPBNDRY;
   pde.rhs = rhs.data();
-
-  for (long i = 0; i < n; ++i) {
-    Real r2 = (i + 1) * (i + 1) * h2;
-    an[i] = pot_cyl(r2, a2 * h2);
-  }
 
   PDESolver * solver = nullptr;
   switch (algo) {
