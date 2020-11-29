@@ -20,6 +20,10 @@
 Real
 pot_axis(Real z, Real a)
 {
+  if (z == 0) {
+    return 0;
+  }
+
   bool neg = z < 0;
   Real z2 = z * z;
   Real a2 = a * a;
