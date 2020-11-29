@@ -140,9 +140,9 @@ main(int argc, char * argv[])
         thrRes /= 10;
       }
 
-      solFile << "#\t" << iter + 1 << "\t" << err << "\t" << res << "\n";
-      errFile << "#\t" << iter + 1 << "\t" << err << "\t" << res << "\n";
-      relFile << "#\t" << iter + 1 << "\t" << err << "\t" << res << "\n";
+      solFile << "#\t" << k + 1 << "\t" << err << "\t" << res << "\n";
+      errFile << "#\t" << k + 1 << "\t" << err << "\t" << res << "\n";
+      relFile << "#\t" << k + 1 << "\t" << err << "\t" << res << "\n";
       for (long i = 0; i < n; ++i) {
         for (long j = 0; j < n; ++j) {
           Real x = (i + 1) * h;

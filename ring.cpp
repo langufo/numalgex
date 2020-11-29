@@ -51,6 +51,7 @@ pot_axis(Real z, Real r2Inn, Real r2Out, Real h)
 int
 main(int argc, char * argv[])
 {
+  using std::endl;
   using std::ofstream;
   using std::scientific;
   using std::string;
@@ -58,7 +59,7 @@ main(int argc, char * argv[])
 
   long n = std::strtol(argv[1], nullptr, 0);
   long iterFast = std::strtol(argv[2], nullptr, 0);
-  long iterFine = std::strtol(argv[3], nullptr, 0);
+  long iterSlow = std::strtol(argv[3], nullptr, 0);
   long algo = std::strtol(argv[4], nullptr, 0);
 
   string prefix(argv[5]);
@@ -77,7 +78,7 @@ main(int argc, char * argv[])
   std::vector<Real> nonzero(n);
   std::vector<Real> sol(n * n);
   std::vector<Real> rhs(n * n);
-  Matrix<Real> m(n, rhs.data());
+  std::vector<Real> an(n);
 
   Real h = static_cast<Real>(1) / (n + 1);
   Real h2 = h * h;
@@ -89,11 +90,13 @@ main(int argc, char * argv[])
   long a2 = a * a;
   long b2 = b * b;
 
-  for (long i = 0; i < n; ++i) {
-    nonzero[i] =
-      (a2 - b2) * l * 2 * h2 / std::sqrt((i + 1) * (i + 1) + (n + 1) * (n + 1));
+  for (long j = 0; j < n; ++j) {
+    an[j] = pot_axis((j + 1) * h, b2 * h2, a2 * h2, 2 * l * h);
+    nonzero[j] =
+      (a2 - b2) * l * 2 * h2 / std::sqrt((j + 1) * (j + 1) + (n + 1) * (n + 1));
   }
 
+  Matrix<Real> m(n, rhs.data());
   for (long i = 0; i < n; ++i) {
     for (long j = 0; j < n; ++j) {
       if (i + 1 < b || i + 1 > a || j + 1 > l) {
@@ -124,22 +127,21 @@ main(int argc, char * argv[])
   pde.rhs = rhs.data();
 
   Real w = 2 / (1 + 2 * std::acos(static_cast<Real>(0)) / (n + 2));
-
   SORSolver solvFast(h, h, h, n, n, w);
 
-  PDESolver * otherSolv = nullptr;
+  PDESolver * solvSlow = nullptr;
 
   switch (algo) {
     case 1:
-      otherSolv = new GSeidelSolver(h, h, h, n, n);
+      solvSlow = new GSeidelSolver(h, h, h, n, n);
       break;
     case 2:
-      otherSolv = new JacobiSolver(h, h, h, n, n);
+      solvSlow = new JacobiSolver(h, h, h, n, n);
       break;
   }
 
-  long iter[2] = { iterFast, iterFine };
-  PDESolver * solv[2] = { &solvFast, otherSolv };
+  long iter[2] = { iterFast, iterSlow };
+  PDESolver * solv[2] = { &solvFast, solvSlow };
 
   Real thrErr = 1;
   Real thrRes = 1;
@@ -154,8 +156,7 @@ main(int argc, char * argv[])
       Real max = 0;
       Real rel = 0;
       for (long j = 0; j < n; ++j) {
-        Real e = std::abs(m[0][j] -
-                          pot_axis((j + 1) * h, b2 * h2, a2 * h2, 2 * l * h));
+        Real e = std::abs(m[0][j] - an[j]);
         if (e > max) {
           max = e;
         }
@@ -190,15 +191,15 @@ main(int argc, char * argv[])
           }
           solFile << "\n";
 
-          Real e = std::abs(m[0][j] - pot_axis(y, b2 * h2, a2 * h2, 2 * l * h));
+          Real e = std::abs(m[0][j] - an[j]);
           errFile << y << "\t" << e << "\n";
           e /= std::abs(m[0][j]);
           relFile << y << "\t" << e << "\n";
         }
-        solFile << "\n";
-        axisFile << "\n\n";
-        errFile << "\n\n";
-        relFile << "\n\n";
+        solFile << endl;
+        axisFile << "\n" << endl;
+        errFile << "\n" << endl;
+        relFile << "\n" << endl;
       }
 
       ++globalIter;
@@ -206,5 +207,5 @@ main(int argc, char * argv[])
     iterFile << "\n";
   }
 
-  delete otherSolv;
+  delete solvSlow;
 }

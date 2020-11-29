@@ -35,6 +35,7 @@ pot_cyl(Real r2, Real a2)
 int
 main(int argc, char * argv[])
 {
+  using std::endl;
   using std::ofstream;
   using std::scientific;
   using std::string;
@@ -56,11 +57,21 @@ main(int argc, char * argv[])
   scientific(relFile);
 
   vector<Real> zero(n);
+  vector<Real> nonzero(n);
   vector<Real> sol(n * n);
   vector<Real> rhs(n * n);
-  Matrix<Real> m(n, rhs.data());
+  vector<Real> an(n);
 
+  Real h = static_cast<Real>(1) / (n + 1);
+  Real h2 = h * h;
   long a = n / 2 + 1;
+  long a2 = a * a;
+
+  for (long j = 0; j < n; ++j) {
+    nonzero[j] = pot_cyl(1, a2 * h2);
+  }
+
+  Matrix<Real> m(n, rhs.data());
 
   for (int i = 0; i < n; ++i) {
     for (int j = 0; j < n; ++j) {
@@ -88,31 +99,32 @@ main(int argc, char * argv[])
   pde.neum = BOTTOMBNDRY | LEFTBNDRY | TOPBNDRY;
   pde.rhs = rhs.data();
 
-  PDESolver * solver = nullptr;
-
-  Real h = static_cast<Real>(1) / (n + 1);
-  Real w = 2 / (1 + 2 * std::acos(static_cast<Real>(0)) / (n + 2));
-
-  switch (algo) {
-    case 0:
-      solver = new SORSolver(h, h, h, n, n, w);
-      break;
-    case 1:
-      solver = new GSeidelSolver(h, h, h, n, n);
-      break;
-    case 2:
-      solver = new JacobiSolver(h, h, h, n, n);
-      break;
+  for (long i = 0; i < n; ++i) {
+    Real r2 = (i + 1) * (i + 1) * h2;
+    an[i] = pot_cyl(r2, a2 * h2);
   }
 
-  long a2 = a * a;
-  Real h2 = h * h;
-
-  Real v = pot_cyl(1, a2 * h2);
+  PDESolver * solver = nullptr;
+  switch (algo) {
+    case 0: {
+      Real w = 2 / (1 + 2 * std::acos(static_cast<Real>(0)) / (n + 2));
+      solver = new SORSolver(h, h, h, n, n, w);
+      break;
+    }
+    case 1: {
+      solver = new GSeidelSolver(h, h, h, n, n);
+      break;
+    }
+    case 2: {
+      solver = new JacobiSolver(h, h, h, n, n);
+      break;
+    }
+  }
 
   Real thrErr = 1;
   Real thrRes = 1;
   m.set_first_elem(sol.data());
+  Matrix<Real> ans(n, an.data());
   for (long k = 0; k < iter; ++k) {
     Real err = solver->iter(sol.data(), pde);
     Real res = solver->abs_res_sum(sol.data(), pde);
@@ -121,9 +133,8 @@ main(int argc, char * argv[])
     Real max = 0;
     Real rel = 0;
     for (long i = 0; i < n; ++i) {
-      long r2 = (i + 1) * (i + 1);
       for (long j = 0; j < n; ++j) {
-        Real e = std::abs(m[i][j] - pot_cyl(r2 * h2, a2 * h2) + v);
+        Real e = std::abs(m[i][j] - an[i]);
         if (e > max) {
           max = e;
         }
@@ -145,9 +156,9 @@ main(int argc, char * argv[])
         thrRes /= 10;
       }
 
-      solFile << "#\t" << iter + 1 << "\t" << err << "\t" << res << "\n";
-      errFile << "#\t" << iter + 1 << "\t" << err << "\t" << res << "\n";
-      relFile << "#\t" << iter + 1 << "\t" << err << "\t" << res << "\n";
+      solFile << "#\t" << k + 1 << "\t" << err << "\t" << res << "\n";
+      errFile << "#\t" << k + 1 << "\t" << err << "\t" << res << "\n";
+      relFile << "#\t" << k + 1 << "\t" << err << "\t" << res << "\n";
       for (long i = 0; i < n; ++i) {
         for (long j = 0; j < n; ++j) {
           Real x = (i + 1) * h;
@@ -155,8 +166,9 @@ main(int argc, char * argv[])
 
           solFile << x << "\t" << y << "\t" << m[i][j] << "\n";
 
-          Real e = std::abs(m[i][j] - pot_cyl(x * x, a2 * h2) + v);
+          Real e = std::abs(m[i][j] - an[i]);
           errFile << x << "\t" << y << "\t" << e << "\n";
+
           e /= std::abs(m[i][j]);
           relFile << x << "\t" << y << "\t" << e << "\n";
         }
@@ -164,9 +176,9 @@ main(int argc, char * argv[])
         errFile << "\n";
         relFile << "\n";
       }
-      solFile << "\n";
-      errFile << "\n";
-      relFile << "\n";
+      solFile << endl;
+      errFile << endl;
+      relFile << endl;
     }
   }
 
