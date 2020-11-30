@@ -50,7 +50,7 @@ pot_axis(Real z, Real a)
 int
 main(int argc, char * argv[])
 {
-  using std::endl;
+  using std::flush;
   using std::ofstream;
   using std::scientific;
   using std::string;
@@ -167,7 +167,7 @@ main(int argc, char * argv[])
       iterFile << max << "\t" << rel << "\n";
 
       /* print solution and errors */
-      if (err < thrErr || res < thrRes) {
+      if (err != 0 && (err < thrErr || res < thrRes)) {
         if (err < thrErr) {
           thrErr /= 10;
         }
@@ -175,29 +175,36 @@ main(int argc, char * argv[])
           thrRes /= 10;
         }
 
-        solFile << "#\t" << globalIter << "\t" << err << "\t" << res << "\n";
-        axisFile << "#\t" << globalIter << "\t" << err << "\t" << res << "\n";
-        errFile << "#\t" << globalIter << "\t" << err << "\t" << res << "\n";
-        relFile << "#\t" << globalIter << "\t" << err << "\t" << res << "\n";
+        solFile << "# " << globalIter << " " << err << " " << res << "\n";
+        axisFile << "# " << globalIter << " " << err << " " << res << "\n";
+        errFile << "# " << globalIter << " " << err << " " << res << "\n";
+        relFile << "# " << globalIter << " " << err << " " << res << "\n";
+
         for (long j = 0; j < n; ++j) {
           Real y = (j - n / 2) * h;
 
           axisFile << y << "\t" << m[0][j] << "\n";
 
+          solFile << "\n";
           for (long i = 0; i < n; ++i) {
             solFile << (i + 1) * h << "\t" << y << "\t" << m[i][j] << "\n";
           }
-          solFile << "\n";
 
           Real e = std::abs(m[0][j] - an[j]);
           errFile << y << "\t" << e << "\n";
           e /= std::abs(m[0][j]);
           relFile << y << "\t" << e << "\n";
         }
-        solFile << endl;
-        axisFile << "\n" << endl;
-        errFile << "\n" << endl;
-        relFile << "\n" << endl;
+
+        solFile << "\n\n";
+        axisFile << "\n\n";
+        errFile << "\n\n";
+        relFile << "\n\n";
+
+        flush(solFile);
+        flush(axisFile);
+        flush(errFile);
+        flush(relFile);
       }
 
       ++globalIter;

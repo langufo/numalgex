@@ -28,7 +28,7 @@ PDESolver::PDESolver(Real x0, Real y0, Real h, int nX, int nY)
 
   /*
    * up to this point:
-   * - if nRegX == 2, limX[1] is wrong;
+   * - if nRegX == 2, limX[1] has the wrong value;
    * - if nRegX == 3, limX[2] hasn't been initialized.
    * either way, the following piece of code solves all the aforementioned
    * problems (the same goes for limY)

@@ -144,7 +144,7 @@ main(int argc, char * argv[])
     iterFile << max << "\t" << rel << "\n";
 
     /* print solution and errors */
-    if (err < thrErr || res < thrRes) {
+    if (err != 0 && (err < thrErr || res < thrRes)) {
       if (err < thrErr) {
         thrErr /= 10;
       }
@@ -152,12 +152,13 @@ main(int argc, char * argv[])
         thrRes /= 10;
       }
 
-      solFile << "#\t" << k + 1 << "\t" << err << "\t" << res << "\n";
-      errFile << "#\t" << k + 1 << "\t" << err << "\t" << res << "\n";
-      relFile << "#\t" << k + 1 << "\t" << err << "\t" << res << "\n";
+      solFile << "# " << k + 1 << " " << err << " " << res << "\n";
+      errFile << "# " << k + 1 << " " << err << " " << res << "\n";
+      relFile << "# " << k + 1 << " " << err << " " << res << "\n";
+
       for (long i = 0; i < n; ++i) {
+        Real x = (i + 1) * h;
         for (long j = 0; j < n; ++j) {
-          Real x = (i + 1) * h;
           Real y = (j + 1) * h;
 
           solFile << x << "\t" << y << "\t" << m[i][j] << "\n";
@@ -172,6 +173,7 @@ main(int argc, char * argv[])
         errFile << "\n";
         relFile << "\n";
       }
+
       solFile << endl;
       errFile << endl;
       relFile << endl;

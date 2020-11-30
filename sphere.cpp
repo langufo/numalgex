@@ -34,6 +34,7 @@ pot_sphere(Real r2, Real a2)
 int
 main(int argc, char * argv[])
 {
+  using std::flush;
   using std::ofstream;
   using std::scientific;
   using std::string;
@@ -45,6 +46,7 @@ main(int argc, char * argv[])
 
   string prefix(argv[4]);
   ofstream iterFile(prefix + "iter.txt");
+  ofstream axisFile(prefix + "axis.txt");
   ofstream solFile(prefix + "sol.txt");
   ofstream errFile(prefix + "err.txt");
   ofstream relFile(prefix + "rel.txt");
@@ -132,7 +134,7 @@ main(int argc, char * argv[])
     iterFile << max << "\t" << rel << "\n";
 
     /* print solution and errors */
-    if (err < thrErr || res < thrRes) {
+    if (err != 0 && (err < thrErr || res < thrRes)) {
       if (err < thrErr) {
         thrErr /= 10;
       }
@@ -140,13 +142,19 @@ main(int argc, char * argv[])
         thrRes /= 10;
       }
 
-      solFile << "#\t" << k + 1 << "\t" << err << "\t" << res << "\n";
-      errFile << "#\t" << k + 1 << "\t" << err << "\t" << res << "\n";
-      relFile << "#\t" << k + 1 << "\t" << err << "\t" << res << "\n";
-      for (long i = 0; i < n; ++i) {
-        for (long j = 0; j < n; ++j) {
+      solFile << "# " << k + 1 << " " << err << " " << res << "\n";
+      errFile << "# " << k + 1 << " " << err << " " << res << "\n";
+      relFile << "# " << k + 1 << " " << err << " " << res << "\n";
+
+      for (long j = 0; j < n; ++j) {
+        solFile << "\n";
+        errFile << "\n";
+        relFile << "\n";
+        Real y = (j + 1) * h;
+        for (long i = 0; i < n; ++i) {
           Real x = (i + 1) * h;
-          Real y = (j + 1) * h;
+
+          axisFile << y << "\t" << m[0][j] << "\n";
 
           solFile << x << "\t" << y << "\t" << m[i][j] << "\n";
 
@@ -155,13 +163,17 @@ main(int argc, char * argv[])
           e /= std::abs(m[i][j]);
           relFile << x << "\t" << y << "\t" << e << "\n";
         }
-        solFile << "\n";
-        errFile << "\n";
-        relFile << "\n";
       }
-      solFile << "\n";
-      errFile << "\n";
-      relFile << "\n";
+
+      solFile << "\n\n";
+      axisFile << "\n\n";
+      errFile << "\n\n";
+      relFile << "\n\n";
+
+      flush(solFile);
+      flush(axisFile);
+      flush(errFile);
+      flush(relFile);
     }
   }
 
