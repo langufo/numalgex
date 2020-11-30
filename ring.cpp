@@ -189,7 +189,6 @@ main(int argc, char * argv[])
 
           solFile << "\n";
           for (long i = 0; i < n; ++i) {
-            Real x = (i + 1) * h;
             solFile << (i + 1) * h << "\t" << y << "\t" << m[i][j] << "\n";
           }
 

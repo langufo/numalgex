@@ -143,6 +143,7 @@ main(int argc, char * argv[])
       }
 
       solFile << "# " << k + 1 << " " << err << " " << res << "\n";
+      axisFile << "# " << k + 1 << " " << err << " " << res << "\n";
       errFile << "# " << k + 1 << " " << err << " " << res << "\n";
       relFile << "# " << k + 1 << " " << err << " " << res << "\n";
 
@@ -150,11 +151,13 @@ main(int argc, char * argv[])
         solFile << "\n";
         errFile << "\n";
         relFile << "\n";
+
         Real y = (j + 1) * h;
+        axisFile << y << "\t"
+                 << std::abs(m[0][j] - pot_sphere(h * h + y * y, a2 * h2))
+                 << "\n";
         for (long i = 0; i < n; ++i) {
           Real x = (i + 1) * h;
-
-          axisFile << y << "\t" << m[0][j] << "\n";
 
           solFile << x << "\t" << y << "\t" << m[i][j] << "\n";
 
