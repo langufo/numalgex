@@ -4,95 +4,83 @@
 #include "BndryProp.hpp"
 #include "Real.hpp"
 
-struct PDE
-{
+struct PDE {
   /**
-   * Array-like container to store the value of the right-hand side of the PDE
-   * at each point in lattice.
+   * Puntatore a un array che contiene, per ciascun punto del
+   * reticolo, ordinati prima per x e poi per y, i right-hand
+   * side dell'equazione
    */
-  Real * rhs;
+  Real *rhs;
 
   /**
-   * @brief Solves a 1-point PDE problem.
-   * Returns the value solving the PDE at point (x,y) for some conditions on
-   * the adjacent points and the given value of the right hand side.
-   * @param neum Bitfield to flag the sides of the boundary where a Neumann
-   * condition is set.
-   * @param x The x coordinate.
-   * @param y The y coordinate.
-   * @param bottom The condition at (x, y-h).
-   * @param top The condition at (x, y+h).
-   * @param left The condition at (x-h, y).
-   * @param right The condition at (x+h, y).
-   * @param rhs The PDE right-hand side as evaluated at (x,y).
+   * Determina il valore della funzione in un punto.
+   * @param x Prima coordinata
+   * @param y Seconda coordinata
+   * @param rhs Right-hand side dell'equazione, valutato nel
+   * punto (x,y)
+   * @param neum Indica i lati per i quali è fornita la
+   * derivata invece che valore della funzione
+   * @param bottom Valore per il punto (x,y-h)
+   * @param top Valore per il punto (x,y+h)
+   * @param left Valore per il punto (x-h,y)
+   * @param right Valore per il punto (x+h,y)
+   * @param h Passo del reticolo
+   * @return Il valore della funzione determinato nel punto
+   * (x,y).
    */
-  Real (*next_value)(Real x,
-                     Real y,
-                     Real rhs,
-                     BndryProp neum,
-                     Real bottom,
-                     Real top,
-                     Real left,
-                     Real right,
-                     Real h);
+  Real (*next_value)(Real x, Real y, Real rhs, BndryProp neum,
+                     Real bottom, Real top, Real left,
+                     Real right, Real h);
 
   /**
-   * @brief Returns the residual at (x,y).
-   * @param neum Bitfield to flag the sides of the boundary where a Neumann
-   * condition is set.
-   * @param x The x coordinate.
-   * @param y The y coordinate.
-   * @param middle The value at (x,y).
-   * @param bottom The value at (x, y-h).
-   * @param top The value at (x, y+h).
-   * @param left The value at (x-h, y).
-   * @param right The value at (x+h, y).
-   * @param rhs Right-hand side of the PDE evaluated at (x,y).
+   * Calcola il residuo in un punto.
+   * @param x Prima coordinata
+   * @param y Seconda coordinata
+   * @param middle Valore della funzione nel punto (x,y)
+   * @param rhs Right-hand side dell'equazione, valutato nel
+   * punto (x,y)
+   * @param neum Indica i lati per i quali è fornita la
+   * derivata invece che del valore della funzione
+   * @param bottom Valore per il punto (x,y-h)
+   * @param top Valore per il punto (x,y+h)
+   * @param left Valore per il punto (x-h,y)
+   * @param right Valore per il punto (x+h,y)
+   * @param h Passo del reticolo
+   * @return Residuo per il punto (x,y).
    */
-  Real (*residual)(Real x,
-                   Real y,
-                   Real middle,
-                   Real rhs,
-                   BndryProp neum,
-                   Real bottom,
-                   Real top,
-                   Real left,
-                   Real right,
-                   Real h);
+  Real (*residual)(Real x, Real y, Real middle, Real rhs,
+                   BndryProp neum, Real bottom, Real top,
+                   Real left, Real right, Real h);
 
   /**
-   * Specifies the sides of the boundary for which Neumann boundary conditions
-   * are provided.
+   * Identifica i lati per i quali sono fornite condizioni
+   * al contorno di Neumann.
    */
   BndryProp neum;
 
   /**
-   * Pointer to an array of nX elements containing the conditions for the top
-   * side (where y is maximum) of the boundary, ordered by the value of x
-   * they're associated with, from minimum to maximum.
+   * Puntatore a un array che ospita la parte di condizioni al
+   * contorno relativa al bordo inferiore (y minimo)
    */
-  Real * top;
+  Real *bottom;
 
   /**
-   * Pointer to an array of nY elements containing the conditions for the left
-   * side (where x is minimum) of the boundary, ordered by the value of y
-   * they're associated with, from minimum to maximum.
+   * Puntatore a un array che ospita la parte di condizioni al
+   * contorno relativa al bordo superiore (y massimo)
    */
-  Real * left;
+  Real *top;
 
   /**
-   * Pointer to an array of nY elements containing the conditions for the right
-   * side (where x is maximum) of the boundary, ordered by the value of y
-   * they're associated with, from minimum to maximum.
+   * Puntatore a un array che ospita la parte di condizioni al
+   * contorno relativa al bordo sinistro (x minimo)
    */
-  Real * right;
+  Real *left;
 
   /**
-   * Pointer to an array of nX elements containing the conditions for the
-   * bottom side (where y is minimum) of the boundary, ordered by the value of
-   * x they're associated with, from minimum to maximum.
+   * Puntatore a un array che ospita la parte di condizioni al
+   * contorno relativa al bordo destro (x massimo)
    */
-  Real * bottom;
+  Real *right;
 };
 
 #endif

@@ -6,81 +6,70 @@
 #include "Matrix.hpp"
 #include "Real.hpp"
 
-JacobiSolver::JacobiSolver(Real x0, Real y0, Real h, int nX, int nY)
-  : PDESolver(x0, y0, h, nX, nY)
-  , hBuff(nX)
-  , vBuff(nY)
-{}
+JacobiSolver::JacobiSolver(Real x0, Real y0, Real h, int nX,
+                           int nY)
+    : PDESolver(x0, y0, h, nX, nY), bBuff(nX), lBuff(nY) {}
 
-Real
-JacobiSolver::iter(Real * sol, const PDE & pde)
-{
-  Real sum = 0;
+Real JacobiSolver::iter(Real *sol, const PDE &pde) {
+  Real sum = 0; /**< errore dell'iterazione */
+
+  /* per accedere ad array come fossero matrici */
   Matrix<Real> ms(nY, sol);
   Matrix<const Real> mr(nY, pde.rhs);
 
-  /*
-   * two arrays are used as buffers to store the values at different points in
-   * the lattice.
-   * - to update the solution at (x,y), hBuff[i] has to be equal to the value at
-   * (x,y-1) before it was updated, and vBuff[j] to the old value at (x-1,y);
-   * - when the solution at (x,y) has been updated, its previous value gets
-   * copied into both hBuff[i] and vBuff[j].
-   * all the points in the lattice can be updated if they are visited in any
-   * order that satisfies these two conditions.
-   */
-
-  /* loading the buffers */
+  /* inizializzo i buffer */
   for (int i = 0; i < nX; ++i) {
-    hBuff[i] = pde.bottom[i];
+    bBuff[i] = pde.bottom[i];
   }
   for (int j = 0; j < nY; ++j) {
-    vBuff[j] = pde.left[j];
+    lBuff[j] = pde.left[j];
   }
 
+  /* scorro sulle regioni */
   for (int p = 0; p < nRegX; ++p) {
     for (int q = 0; q < nRegY; ++q) {
-      int iFirst = limX[p][0];
-      int jFirst = limY[q][0];
-      int jLast = limY[q][1];
+      /* limiti della regione corrente */
+      int iInf = limX[p][0];
+      int iSup = limX[p][1];
+      int jInf = limY[q][0];
+      int jSup = limY[q][1];
 
-      /*
-       * the pointers to the bottom and left values are not needed since they
-       * are copied inside the buffers and properly updated as the solution
-       * changes
-       */
-      const Real *t, *r;
-      int tStep;
-
+      const Real *t, *r; // elementi adiacenti
+      int tStep;         // offset per muovere t da x a x+h
+      if (bndryX[p] & RIGHTBNDRY) {
+        r = pde.right + jInf;
+      } else {
+        r = ms[iInf + 1] + jInf;
+      }
+      /* l'offset da applicare a t passando da x a x+h cambia a
+       * seconda che ci si trovi accanto al bordo superiore o
+       * meno */
       if (bndryY[q] & TOPBNDRY) {
-        t = pde.top + iFirst;
+        t = pde.top + iInf;
         tStep = 1;
       } else {
-        t = ms[iFirst] + jFirst + 1;
+        t = ms[iInf] + jInf + 1;
         tStep = nY;
       }
-      if (bndryX[p] & RIGHTBNDRY) {
-        r = pde.right + jFirst;
-      } else {
-        r = ms[iFirst + 1] + jFirst;
-      }
 
+      /* determino su quali fronti è data la derivata */
       BndryProp neum = pde.neum & (bndryX[p] | bndryY[q]);
 
-      for (int i = limX[p][0]; i <= limX[p][1]; ++i) {
-        for (int j = jFirst; j <= jLast; ++j) {
-          Real old = ms[i][j]; // old value copy
-          int k = j - jFirst;
+      /* scorro sui punti della regione */
+      for (int i = iInf; i <= iSup; ++i) {
+        for (int j = jInf; j <= jSup; ++j) {
+          Real old = ms[i][j];
+          int k = j - jInf;
+          ms[i][j] = pde.next_value(x[i], y[j], mr[i][j], neum,
+                                    bBuff[i], t[k], lBuff[j],
+                                    r[k], h);
+          sum += std::abs(ms[i][j] - old);
 
-          ms[i][j] = pde.next_value(
-            x[i], y[j], mr[i][j], neum, hBuff[i], t[k], vBuff[j], r[k], h);
-
-          sum += std::fabs(ms[i][j] - old);
-
-          hBuff[i] = old; // set up for use at (i, j+1)
-          vBuff[j] = old; // set up for use at (i+1, j)
+          bBuff[i] = old; // da usare poi a (i,j+1)
+          lBuff[j] = old; // da usare poi a (i+1,j)
         }
 
+        /* muovo i puntatori da x a x+h */
         t += tStep;
         r += nY;
       }

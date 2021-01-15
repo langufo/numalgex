@@ -1,7 +1,6 @@
 #include <cmath>
 #include <cstdlib>
 #include <fstream>
-#include <iostream>
 #include <string>
 #include <vector>
 
@@ -15,18 +14,15 @@
 #include "Real.hpp"
 #include "SORSolver.hpp"
 
-Real
-pot_axis(Real z, Real a)
-{
+Real pot_axis(Real z, Real a) {
   if (z == 0) {
     return 0;
   }
-
   bool neg = z < 0;
   Real z2 = z * z;
-  Real a2 = a * a;
+  Real a2 = a * a; // quadrato del raggio della sfera
   Real r2 = a2 + z2;
-  Real r = std::sqrt(r2);
+  Real r = std::sqrt(r2); // norma della distanza
   z = std::abs(z);
   Real v;
   if (z > a) {
@@ -38,63 +34,50 @@ pot_axis(Real z, Real a)
 }
 
 /*
- * Argument list:
- *  - matrix size
- *  - number of SOR iterations
- *  - number of iterations with another algorithm
- *  - the other solving algorithm (1 -> Gauss-Seidel, 2 -> Jacobi)
- *  - filenames prefix
+ * Lista degli argomenti:
+ *  - dimensione della matrice
+ *  - numero di iterazioni
+ *  - algoritmo risolutivo: 0 -> SOR, 1 -> Gauss-Seidel, 2 ->
+ * Jacobi
+ *  - prefisso per il nome dei file di output
  */
-int
-main(int argc, char * argv[])
-{
-  using std::flush;
-  using std::ofstream;
-  using std::scientific;
-  using std::string;
-  using std::vector;
+int main(int argc, char *argv[]) {
+  using namespace std;
 
-  long n = std::strtol(argv[1], nullptr, 0);
-  long iterFast = std::strtol(argv[2], nullptr, 0);
-  long iterSlow = std::strtol(argv[3], nullptr, 0);
-  long algo = std::strtol(argv[4], nullptr, 0);
+  long n = strtol(argv[1], nullptr, 0); // dimensione matrice
+  long iter = strtol(argv[2], nullptr, 0); // iterazioni
+  long algo = strtol(argv[3], nullptr, 0); // scelta algoritmo
 
-  if (n % 2 == 0) {
-    std::cerr << "Dimension must be odd.\n";
-    return 1;
-  }
-
-  string prefix(argv[5]);
-  ofstream iterFile(prefix + "iter.txt");
-  ofstream axisFile(prefix + "axis.txt");
-  ofstream solFile(prefix + "sol.txt");
-  ofstream errFile(prefix + "err.txt");
-  ofstream relFile(prefix + "rel.txt");
+  string prefix(argv[4]); // prefisso per il nome dei file
+  ofstream iterFile(prefix + "iter.txt"); // info iterazioni
+  ofstream solFile(prefix + "sol.txt");   // soluzioni complete
+  ofstream axisFile(prefix + "axis.txt"); // soluzioni su asse
+  ofstream errFile(prefix + "err.txt");   // errori sull'asse
   scientific(iterFile);
-  scientific(axisFile);
   scientific(solFile);
+  scientific(axisFile);
   scientific(errFile);
-  scientific(relFile);
 
-  vector<Real> zero(n);
-  vector<Real> r(n);
-  vector<Real> t(n);
-  vector<Real> sol(n * n);
-  vector<Real> rhs(n * n);
-  vector<Real> an(n);
+  vector<Real> zero(n);    // condizione al bordo nulla
+  vector<Real> r(n);       // condizione al bordo destro
+  vector<Real> t(n);       // condizione al bordo superiore
+  vector<Real> sol(n * n); // memoria per la soluzione
+  vector<Real> rhs(n * n); // memoria per rhs
+  vector<Real> an(n);      // soluzione esatta sull'asse
 
-  Real h = static_cast<Real>(1) / (n + 1);
+  Real h = static_cast<Real>(1) / (n + 1); // passo reticolo
+  long a = n / 8 + 1; // raggio della sfera in unità di h
 
-  long a = n / 8 + 1;
-
+  /* preparo condizioni al bordo e soluzione esatta */
   for (int i = 0; i < n; ++i) {
-    an[i] = pot_axis((i + 1) * h, a * h);
     long d2 = (i + 1) * (i + 1) + (n + 1) * (n + 1);
     Real coeff = a * a * a * a * h * h / 8;
-    r[i] = coeff * (i + 1) / (d2 * std::sqrt(d2));
-    t[i] = coeff * (n + 1) / (d2 * std::sqrt(d2));
+    an[i] = pot_axis((i + 1) * h, a * h);
+    r[i] = coeff * (i + 1) / (d2 * sqrt(d2));
+    t[i] = coeff * (n + 1) / (d2 * sqrt(d2));
   }
 
+  /* popolo la matrice di rhs */
   Matrix<Real> m(n, rhs.data());
   for (int i = 0; i < n; ++i) {
     for (int j = 0; j < n; ++j) {
@@ -108,102 +91,76 @@ main(int argc, char * argv[])
     }
   }
 
+  /* assemblo la definizione del problema */
   PDE pde;
+  pde.rhs = rhs.data();
   pde.next_value = CylinderPDE::next_value;
   pde.residual = CylinderPDE::residual;
+  pde.neum = LEFTBNDRY;
   pde.bottom = zero.data();
   pde.left = zero.data();
   pde.right = r.data();
   pde.top = t.data();
-  pde.neum = LEFTBNDRY;
-  pde.rhs = rhs.data();
 
-  Real w = 2 / (1 + 2 * std::sqrt(4.45) / (n + 2));
-  SORSolver solvFast(h, h, h, n, n, w);
-
-  PDESolver * solvSlow = nullptr;
+  PDESolver *solver = nullptr;
   switch (algo) {
-    case 1:
-      solvSlow = new GSeidelSolver(h, h, h, n, n);
-      break;
-    case 2:
-      solvSlow = new JacobiSolver(h, h, h, n, n);
-      break;
+  case 0: {
+    Real w = 2 / (1 + std::sqrt(4.45) / (n + 2));
+    solver = new SORSolver(h, h, h, n, n, w);
+    break;
+  }
+  case 1:
+    solver = new GSeidelSolver(h, h, h, n, n);
+    break;
+  case 2:
+    solver = new JacobiSolver(h, h, h, n, n);
+    break;
   }
 
-  long iter[2] = { iterFast, iterSlow };
-  PDESolver * solv[2] = { &solvFast, solvSlow };
+  m.set_first_elem(sol.data()); // cambio di matrice!
+  Real thrErr = 1; // soglia per stampa (errore iterazione)
+  Real thrRes = 1; // altra soglia per stampa (residuo)
+  for (int k = 0; k < iter; ++k) {
+    Real err = solver->iter(sol.data(), pde);
+    Real res = solver->abs_res_sum(sol.data(), pde);
+    iterFile << k + 1 << "\t" << err << "\t" << res << "\n";
 
-  Real thrErr = 1;
-  Real thrRes = 1;
-  long globalIter = 1;
-  m.set_first_elem(sol.data());
-  for (int step = 0; step < 2; ++step) {
-    for (long k = 0; k < iter[step]; ++k) {
-      Real err = solv[step]->iter(sol.data(), pde);
-      Real res = solv[step]->abs_res_sum(sol.data(), pde);
-      iterFile << globalIter << "\t" << err << "\t" << res << "\t";
+    if (err != 0 && (err < thrErr || res < thrRes)) { // stampa
+      /* aggiorno la soglia raggiunta decimandola */
+      if (err < thrErr) {
+        thrErr /= 10;
+      }
+      if (res < thrRes) {
+        thrRes /= 10;
+      }
 
-      Real max = 0;
-      Real rel = 0;
+      /* intestazione */
+      solFile << "# " << k + 1 << " " << err << " " << res
+              << "\n";
+      axisFile << "# " << k + 1 << " " << err << " " << res
+               << "\n";
+      errFile << "# " << k + 1 << " " << err << " " << res
+              << "\n";
+      /* soluzione ed errore */
       for (long j = 0; j < n; ++j) {
-        Real e = std::abs(m[0][j] - an[j]);
-        if (e > max) {
-          max = e;
+        Real y = (j + 1) * h;
+        solFile << "\n";
+        for (long i = 0; i < n; ++i) {
+          solFile << (i + 1) * h << "\t" << y << "\t"
+                  << m[i][j] << "\n";
         }
-        e /= std::abs(m[0][j]);
-        if (e > rel) {
-          rel = e;
-        }
+        axisFile << y << "\t" << m[0][j] << "\n";
+        Real e = abs(m[0][j] - an[j]); // errore
+        errFile << y << "\t" << e << "\n";
       }
-
-      iterFile << max << "\t" << rel << "\n";
-
-      /* print solution and errors */
-      if (err != 0 && (err < thrErr || res < thrRes)) {
-        if (err < thrErr) {
-          thrErr /= 10;
-        }
-        if (res < thrRes) {
-          thrRes /= 10;
-        }
-
-        solFile << "# " << globalIter << " " << err << " " << res << "\n";
-        axisFile << "# " << globalIter << " " << err << " " << res << "\n";
-        errFile << "# " << globalIter << " " << err << " " << res << "\n";
-        relFile << "# " << globalIter << " " << err << " " << res << "\n";
-
-        for (long j = 0; j < n; ++j) {
-          Real y = (j + 1) * h;
-
-          axisFile << y << "\t" << m[0][j] << "\n";
-
-          solFile << "\n";
-          for (long i = 0; i < n; ++i) {
-            solFile << (i + 1) * h << "\t" << y << "\t" << m[i][j] << "\n";
-          }
-
-          Real e = std::abs(m[0][j] - an[j]);
-          errFile << y << "\t" << e << "\n";
-          e /= std::abs(m[0][j]);
-          relFile << y << "\t" << e << "\n";
-        }
-
-        solFile << "\n\n";
-        axisFile << "\n\n";
-        errFile << "\n\n";
-        relFile << "\n\n";
-
-        flush(solFile);
-        flush(axisFile);
-        flush(errFile);
-        flush(relFile);
-      }
-
-      ++globalIter;
+      solFile << "\n\n";
+      axisFile << "\n\n";
+      errFile << "\n\n";
+      flush(solFile);
+      flush(axisFile);
+      flush(errFile);
     }
-    iterFile << "\n";
   }
 
-  delete solvSlow;
+  delete solver;
 }

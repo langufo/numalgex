@@ -3,35 +3,39 @@
 #include <cmath>
 #include <vector>
 
-#include "Matrix.hpp"
 #include "Real.hpp"
 
 PDESolver::PDESolver(Real x0, Real y0, Real h, int nX, int nY)
-  : h(h)
-  , nX(nX)
-  , nY(nY)
-#ifndef ON_THE_FLY
-  , x(nX)
-  , y(nY)
-#else
-  , x(x0, h)
-  , y(y0, h)
-#endif
-  , bndryX{ LEFTBNDRY, 0, RIGHTBNDRY }
-  , bndryY{ BOTTOMBNDRY, 0, TOPBNDRY }
-  , limX{ { 0, 0 }, { 1, nX - 2 } }
-  , limY{ { 0, 0 }, { 1, nY - 2 } }
-{
+    : h(h), nX(nX), nY(nY), x(nX),
+      y(nY), bndryX{LEFTBNDRY, 0, RIGHTBNDRY},
+      bndryY{BOTTOMBNDRY, 0, TOPBNDRY},
+      limX{{0, 0}, {1, nX - 2}}, limY{{0, 0}, {1, nY - 2}} {
+  for (int i = 0; i < nX; ++i) {
+    x[i] = x0 + i * h;
+  }
+  for (int j = 0; j < nY; ++j) {
+    y[j] = y0 + j * h;
+  }
 
+  /*
+   * per la direzione x:
+   * - se n == 1 c'è solo una regione, la quale si affaccia sia
+   * sul bordo sinistro che su quello destro;
+   * - se n == 2 ci sono due regioni, una si affaccia solo sul
+   * bordo sinistro, l'altra solo su quello destro
+   * - se n >= 3 ci sono tre regioni, una affacciata sul bordo
+   * sinistro, una affacciata sul bordo destro e una centrale
+   * che non si affaccia su nessuno dei due analogo discorso
+   * vale per la direzione y
+   */
   nRegX = nX < 3 ? nX : 3;
   nRegY = nY < 3 ? nY : 3;
 
   /*
-   * up to this point:
-   * - if nRegX == 2, limX[1] has the wrong value;
-   * - if nRegX == 3, limX[2] hasn't been initialized.
-   * either way, the following piece of code solves all the aforementioned
-   * problems (the same goes for limY)
+   * fino a questo punto:
+   * - se nReg* == 2, lim*[1] contiene il valore sbagliato;
+   * - se nReg* == 3, lim*[2] non è stato inizializzato;
+   * in ogni caso, il codice seguente risolve il problema
    */
   limX[nRegX - 1][0] = nX - 1;
   limX[nRegX - 1][1] = nX - 1;
@@ -39,60 +43,54 @@ PDESolver::PDESolver(Real x0, Real y0, Real h, int nX, int nY)
   limY[nRegY - 1][1] = nY - 1;
 
   /*
-   * a similar problem involves bndryX and bndryY, and similarly it is solved
+   * un problema analogo al precedente affligge bndryX e bndrY,
+   * e analogamente viene risolto
    */
   bndryX[nRegX - 1] |= RIGHTBNDRY;
   bndryY[nRegY - 1] |= TOPBNDRY;
 }
 
-Real
-PDESolver::abs_res_sum(Real * sol, const PDE & pde) const
-{
-  Real sum = 0;
-
-  Matrix<const Real> mr(nY, pde.rhs);
-  Matrix<const Real> ms(nY, sol);
+Real PDESolver::abs_res_sum(Real *sol, const PDE &pde) const {
+  Real sum = 0; // somma residuale
 
   /*
-   * since each region has well-defined boundary properties, looping over them
-   * requires less checks at runtime
+   * dal momento che le regioni hanno bordi con proprietà ben
+   * definite, scorrere su di loro richiede meno controlli
+   * durante l'esecuzione
    */
   for (int p = 0; p < nRegX; ++p) {
     for (int q = 0; q < nRegY; ++q) {
+      /* limiti della regione corrente */
       int iInf = limX[p][0];
       int iSup = limX[p][1];
       int jInf = limY[q][0];
       int jSup = limY[q][1];
 
+      /* bordi adiacenti alla regione */
       BndryProp bndry = bndryX[p] | bndryY[q];
 
-      const Real *b, *t, *l, *r; // pointers to adjacent lattice points
+      const Real *b, *t, *l, *r; // elementi adiacenti
       init_point_bndry(iInf, jInf, sol, pde, b, t, l, r);
 
       /*
-       * while staying in the same region, going from a point to the one on the
-       * right instead requires (b,t,l,r) -> (b+nY,t+nY,l+nY,r+nY), UNLESS b (t)
-       * is on the bottom or top boundary: then b -> b+1 or t -> t+1
+       * restando all'interno di una regione, spostarsi da x a
+       * x+h richiede (b,t,l,r)->(b+nY,t+nY,l+nY,r+nY), TRANNE
+       * quando b (o t) punta al bordo inferiore (o superiore):
+       * in tal caso b->b+1 (o t->t+1)
        */
       int bStep = bndry & BOTTOMBNDRY ? 1 : nY; // x -> x+h
       int tStep = bndry & TOPBNDRY ? 1 : nY;    // x -> x+h
 
+      /* scorro sui punti della regione */
       for (int i = iInf; i <= iSup; ++i) {
         for (int j = jInf; j <= jSup; ++j) {
           int k = j - jInf;
-          sum += std::abs(pde.residual(x[i],
-                                       y[j],
-                                       ms[i][j],
-                                       mr[i][j],
-                                       pde.neum & bndry,
-                                       b[k],
-                                       t[k],
-                                       l[k],
-                                       r[k],
-                                       h));
+          sum += std::abs(pde.residual(
+              x[i], y[j], sol[i * nY + j], pde.rhs[i * nY + j],
+              pde.neum & bndry, b[k], t[k], l[k], r[k], h));
         }
 
-        /* moving the pointers from x to x+h */
+        /* muovo i puntatori da x a x+h */
         b += bStep;
         t += tStep;
         l += nY;
@@ -104,35 +102,31 @@ PDESolver::abs_res_sum(Real * sol, const PDE & pde) const
   return sum;
 }
 
-void
-PDESolver::init_point_bndry(int i,
-                            int j,
-                            const Real * sol,
-                            const PDE & pde,
-                            const Real *& b,
-                            const Real *& t,
-                            const Real *& l,
-                            const Real *& r) const
-{
-  if (j == 0) {
+void PDESolver::init_point_bndry(int i, int j, const Real *sol,
+                                 const PDE &pde,
+                                 const Real *&b,
+                                 const Real *&t,
+                                 const Real *&l,
+                                 const Real *&r) const {
+  if (j == 0) { // siamo accanto al bordo inferiore
     b = pde.bottom + i;
   } else {
     b = sol + i * nY + j - 1;
   }
 
-  if (j == nY - 1) {
+  if (j == nY - 1) { // siamo accanto al bordo superiore
     t = pde.top + i;
   } else {
     t = sol + i * nY + j + 1;
   }
 
-  if (i == 0) {
+  if (i == 0) { // siamo accanto al bordo sinistro
     l = pde.left + j;
   } else {
     l = sol + (i - 1) * nY + j;
   }
 
-  if (i == nX - 1) {
+  if (i == nX - 1) { // siamo accanto al bordo destro
     r = pde.right + j;
   } else {
     r = sol + (i + 1) * nY + j;

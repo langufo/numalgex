@@ -1,5 +1,5 @@
-#ifndef JACOBIPDE_HPP
-#define JACOBIPDE_HPP
+#ifndef JACOBISOLVER_HPP
+#define JACOBISOLVER_HPP
 
 #include <vector>
 
@@ -7,23 +7,22 @@
 #include "PDESolver.hpp"
 #include "Real.hpp"
 
-class JacobiSolver : public PDESolver
-{
+class JacobiSolver : public PDESolver {
 public:
   JacobiSolver(Real x0, Real y0, Real h, int nX, int nY);
 
-  Real iter(Real * sol, const PDE & pde) override;
+  Real iter(Real *sol, const PDE &pde) override;
 
 private:
   /**
-   * Vector spanning along the x axis.
+   * Vettore che ospita valori della soluzione precedente
    */
-  std::vector<Real> hBuff;
+  std::vector<Real> bBuff;
 
   /**
-   * Vector spanning along the y axis.
+   * Vettore che ospita valori della soluzione precedente
    */
-  std::vector<Real> vBuff;
+  std::vector<Real> lBuff;
 };
 
 #endif

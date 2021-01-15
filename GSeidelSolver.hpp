@@ -1,16 +1,15 @@
-#ifndef GSEIDELPDE_HPP
-#define GSEIDELPDE_HPP
+#ifndef GSEIDELSOLVER_HPP
+#define GSEIDELSOLVER_HPP
 
 #include "PDE.hpp"
 #include "PDESolver.hpp"
 #include "Real.hpp"
 
-class GSeidelSolver : public PDESolver
-{
+class GSeidelSolver : public PDESolver {
 public:
   GSeidelSolver(Real x0, Real y0, Real h, int nX, int nY);
 
-  Real iter(Real * sol, const PDE & pde) override;
+  Real iter(Real *sol, const PDE &pde) override;
 };
 
 #endif

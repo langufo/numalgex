@@ -14,9 +14,7 @@
 #include "Real.hpp"
 #include "SORSolver.hpp"
 
-Real
-pot_sphere(Real r2, Real a2)
-{
+Real pot_sphere(Real r2, Real a2) {
   if (r2 <= a2) {
     return 0.5 * (a2 - r2 / 3);
   } else {
@@ -25,54 +23,47 @@ pot_sphere(Real r2, Real a2)
 }
 
 /*
- * Argument list:
- *  - matrix size
- *  - number of iterations
- *  - solving algorithm: 0 -> SOR, 1 -> Gauss-Seidel, 2 -> Jacobi
- *  - output files name prefix
+ * Argomenti da passare all'eseguibile:
+ *  > dimensione della matrice
+ *  > numero di iterazioni
+ *  > algoritmo risolutivo: 0->SOR, 1->Gauss-Seidel, 2->Jacobi
+ *  > prefisso per il nome dei file di output
  */
-int
-main(int argc, char * argv[])
-{
-  using std::flush;
-  using std::ofstream;
-  using std::scientific;
-  using std::string;
-  using std::vector;
+int main(int argc, char *argv[]) {
+  using namespace std;
 
-  long n = std::strtol(argv[1], nullptr, 0);
-  long iter = std::strtol(argv[2], nullptr, 0);
-  long algo = std::strtol(argv[3], nullptr, 0);
+  long n = strtol(argv[1], nullptr, 0); // dimensione matrice
+  long iter = strtol(argv[2], nullptr, 0); // iterazioni
+  long algo = strtol(argv[3], nullptr, 0); // scelta algoritmo
 
-  string prefix(argv[4]);
-  ofstream iterFile(prefix + "iter.txt");
-  ofstream axisFile(prefix + "axis.txt");
-  ofstream solFile(prefix + "sol.txt");
-  ofstream errFile(prefix + "err.txt");
-  ofstream relFile(prefix + "rel.txt");
+  string prefix(argv[4]); // prefisso per il nome dei file
+  ofstream iterFile(prefix + "iter.txt"); // info iterazioni
+  ofstream solFile(prefix + "sol.txt");   // soluzioni trovate
+  ofstream errFile(prefix + "err.txt");   // errori soluzioni
   scientific(iterFile);
   scientific(solFile);
   scientific(errFile);
-  scientific(relFile);
 
-  vector<Real> zero(n);
-  vector<Real> nonzero(n);
-  vector<Real> sol(n * n);
-  vector<Real> rhs(n * n);
-  Matrix<Real> m(n, rhs.data());
+  vector<Real> zero(n);    // condizione al bordo nulla
+  vector<Real> nonzero(n); // condizione al bordo non nulla
+  vector<Real> sol(n * n); // memoria per la soluzione
+  vector<Real> rhs(n * n); // memoria per rhs
 
-  Real h = static_cast<Real>(1) / (n + 1);
+  Real h = static_cast<Real>(1) / (n + 1); // passo reticolo
+  long a = n / 2 + 1; // raggio della sfera in unità di h
   Real h2 = h * h;
-  long a = n / 2 + 1;
   long a2 = a * a;
 
-  for (int i = 0; i < n; ++i) {
-    nonzero[i] =
-      pot_sphere(((i + 1) * (i + 1) + (n + 1) * (n + 1)) * h2, a2 * h2);
+  /* preparo la condizione al bordo non nulla */
+  for (long i = 0; i < n; ++i) {
+    nonzero[i] = pot_sphere(
+        ((i + 1) * (i + 1) + (n + 1) * (n + 1)) * h2, a2 * h2);
   }
 
-  for (int i = 0; i < n; ++i) {
-    for (int j = 0; j < n; ++j) {
+  /* popolo la matrice di rhs */
+  Matrix<Real> m(n, rhs.data());
+  for (long i = 0; i < n; ++i) {
+    for (long j = 0; j < n; ++j) {
       if ((i + 1) * (i + 1) + (j + 1) * (j + 1) <= a * a) {
         m[i][j] = -1;
       } else {
@@ -81,60 +72,42 @@ main(int argc, char * argv[])
     }
   }
 
+  /* assemblo la definizione del problema */
   PDE pde;
+  pde.rhs = rhs.data();
   pde.next_value = CylinderPDE::next_value;
   pde.residual = CylinderPDE::residual;
+  pde.neum = BOTTOMBNDRY | LEFTBNDRY;
   pde.bottom = zero.data();
   pde.left = zero.data();
   pde.right = nonzero.data();
   pde.top = nonzero.data();
-  pde.neum = BOTTOMBNDRY | LEFTBNDRY;
-  pde.rhs = rhs.data();
 
-  PDESolver * solver = nullptr;
-
-  Real w = 2 / (1 + std::sqrt(4.45) / (n + 2));
-
+  PDESolver *solver = nullptr;
   switch (algo) {
-    case 0:
-      solver = new SORSolver(h, h, h, n, n, w);
-      break;
-    case 1:
-      solver = new GSeidelSolver(h, h, h, n, n);
-      break;
-    case 2:
-      solver = new JacobiSolver(h, h, h, n, n);
-      break;
+  case 0: {
+    Real w = 2 / (1 + sqrt(4.45) / (n + 2));
+    solver = new SORSolver(h, h, h, n, n, w);
+    break;
+  }
+  case 1:
+    solver = new GSeidelSolver(h, h, h, n, n);
+    break;
+  case 2:
+    solver = new JacobiSolver(h, h, h, n, n);
+    break;
   }
 
-  Real thrErr = 1;
-  Real thrRes = 1;
-  m.set_first_elem(sol.data());
+  m.set_first_elem(sol.data()); // cambio di matrice!
+  Real thrErr = 1; // soglia per stampa (errore iterazione)
+  Real thrRes = 1; // altra soglia per stampa (residuo)
   for (int k = 0; k < iter; ++k) {
     Real err = solver->iter(sol.data(), pde);
     Real res = solver->abs_res_sum(sol.data(), pde);
-    iterFile << k + 1 << "\t" << err << "\t" << res << "\t";
+    iterFile << k + 1 << "\t" << err << "\t" << res << "\n";
 
-    Real max = 0;
-    Real rel = 0;
-    for (long i = 0; i < n; ++i) {
-      for (long j = 0; j < n; ++j) {
-        Real r2 = ((i + 1) * (i + 1) + (j + 1) * (j + 1)) * h2;
-        Real e = std::abs(m[i][j] - pot_sphere(r2, a2 * h2));
-        if (e > max) {
-          max = e;
-        }
-        e /= std::abs(m[i][j]);
-        if (e > rel) {
-          rel = e;
-        }
-      }
-    }
-
-    iterFile << max << "\t" << rel << "\n";
-
-    /* print solution and errors */
-    if (err != 0 && (err < thrErr || res < thrRes)) {
+    if (err != 0 && (err < thrErr || res < thrRes)) { // stampa
+      /* aggiorno la soglia raggiunta decimandola */
       if (err < thrErr) {
         thrErr /= 10;
       }
@@ -142,41 +115,28 @@ main(int argc, char * argv[])
         thrRes /= 10;
       }
 
-      solFile << "# " << k + 1 << " " << err << " " << res << "\n";
-      axisFile << "# " << k + 1 << " " << err << " " << res << "\n";
-      errFile << "# " << k + 1 << " " << err << " " << res << "\n";
-      relFile << "# " << k + 1 << " " << err << " " << res << "\n";
-
-      for (long j = 0; j < n; ++j) {
+      /* intestazione */
+      solFile << "# " << k + 1 << " " << err << " " << res
+              << "\n";
+      errFile << "# " << k + 1 << " " << err << " " << res
+              << "\n";
+      /* soluzione ed errore */
+      for (int j = 0; j < n; ++j) {
         solFile << "\n";
         errFile << "\n";
-        relFile << "\n";
-
         Real y = (j + 1) * h;
-        axisFile << y << "\t"
-                 << std::abs(m[0][j] - pot_sphere(h * h + y * y, a2 * h2))
-                 << "\n";
-        for (long i = 0; i < n; ++i) {
+        for (int i = 0; i < n; ++i) {
           Real x = (i + 1) * h;
-
+          Real e = abs(m[i][j] -
+                       pot_sphere(x * x + y * y, a2 * h2));
           solFile << x << "\t" << y << "\t" << m[i][j] << "\n";
-
-          Real e = std::abs(m[i][j] - pot_sphere(x * x + y * y, a2 * h2));
           errFile << x << "\t" << y << "\t" << e << "\n";
-          e /= std::abs(m[i][j]);
-          relFile << x << "\t" << y << "\t" << e << "\n";
         }
       }
-
       solFile << "\n\n";
-      axisFile << "\n\n";
       errFile << "\n\n";
-      relFile << "\n\n";
-
       flush(solFile);
-      flush(axisFile);
       flush(errFile);
-      flush(relFile);
     }
   }
 

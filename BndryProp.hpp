@@ -2,31 +2,30 @@
 #define BNDRYPROP_HPP
 
 /**
- * An unsigned integer type for a bitfield to flag the sides of the
- * boundary that share some property. It can be manipulated using the static
- * members TOPBNDRY, LEFTBNDRY, RIGHTBNDRY, BOTTOMBNDRY defined in this
- * class.
+ * Alias di un tipo intero per rappresentare un bitfield che
+ * specifica quali lati di un bordo condividono una certa
+ * proprietà
  */
 typedef unsigned int BndryProp;
 
 /**
- * Bitmask to set the bit associated to the top side of the boundary.
+ * Costante che imposta il bit relativo al bordo superiore
  */
-static const BndryProp TOPBNDRY = 1;
+const BndryProp TOPBNDRY = 1;
 
 /**
- * Bitmask to set the bit associated to the top side of the boundary.
+ * Costante che imposta il bit relativo al bordo sinistro
  */
-static const BndryProp LEFTBNDRY = 2;
+const BndryProp LEFTBNDRY = 2;
 
 /**
- * Bitmask to set the bit associated to the right side of the boundary.
+ * Costante che imposta il bit relativo al bordo destro
  */
-static const BndryProp RIGHTBNDRY = 4;
+const BndryProp RIGHTBNDRY = 4;
 
 /**
- * Bitmask to set the bit associated to the bottom side of the boundary.
+ * Costante che imposta il bit relativo al bordo inferiore
  */
-static const BndryProp BOTTOMBNDRY = 8;
+const BndryProp BOTTOMBNDRY = 8;
 
 #endif
