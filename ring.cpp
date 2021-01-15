@@ -14,8 +14,6 @@
 #include "Real.hpp"
 #include "SORSolver.hpp"
 
-/* rho / 4 epsilon = 1 */
-
 Real
 pot_axis(Real z, Real r2Inn, Real r2Out, Real h)
 {
@@ -36,8 +34,8 @@ pot_axis(Real z, Real r2Inn, Real r2Out, Real h)
     argOut = (s + a) / (t + b);
   }
 
-  return r2Inn * std::log(argInn) - r2Out * std::log(argOut) +
-         (r2Inn - r2Out) * (a / (s + p) - b / (t + q));
+  return 0.25 * (r2Inn * std::log(argInn) - r2Out * std::log(argOut) +
+                 (r2Inn - r2Out) * (a / (s + p) - b / (t + q)));
 }
 
 /*
@@ -92,8 +90,8 @@ main(int argc, char * argv[])
 
   for (long j = 0; j < n; ++j) {
     an[j] = pot_axis((j + 1) * h, b2 * h2, a2 * h2, 2 * l * h);
-    nonzero[j] =
-      (a2 - b2) * l * 2 * h2 / std::sqrt((j + 1) * (j + 1) + (n + 1) * (n + 1));
+    nonzero[j] = 0.25 * (a2 - b2) * l * 2 * h2 /
+                 std::sqrt((j + 1) * (j + 1) + (n + 1) * (n + 1));
   }
 
   Matrix<Real> m(n, rhs.data());
@@ -102,7 +100,7 @@ main(int argc, char * argv[])
       if (i + 1 < b || i + 1 > a || j + 1 > l) {
         m[i][j] = 0;
       } else {
-        m[i][j] = -4;
+        m[i][j] = -1;
       }
       if (i + 1 == b) {
         m[i][j] /= 2;
@@ -126,7 +124,7 @@ main(int argc, char * argv[])
   pde.neum = BOTTOMBNDRY | LEFTBNDRY;
   pde.rhs = rhs.data();
 
-  Real w = 2 / (1 + 2 * std::acos(static_cast<Real>(0)) / (n + 2));
+  Real w = 2 / (1 + std::sqrt(4.45) / (n + 2));
   SORSolver solvFast(h, h, h, n, n, w);
 
   PDESolver * solvSlow = nullptr;

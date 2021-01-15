@@ -18,9 +18,9 @@ Real
 pot_cyl(Real r2, Real a2)
 {
   if (r2 <= a2) {
-    return -r2 + a2;
+    return 0.25 * (a2 - r2);
   } else {
-    return -a2 * std::log(r2 / a2);
+    return 0.25 * a2 * std::log(a2 / r2);
   }
 }
 
@@ -77,14 +77,14 @@ main(int argc, char * argv[])
   for (int i = 0; i < n; ++i) {
     for (int j = 0; j < n; ++j) {
       if (i + 1 < a) {
-        m[i][j] = -4;
+        m[i][j] = -1;
       } else if (i + 1 > a) {
         m[i][j] = 0;
       } else { // i + 1 == a
         if (correc) {
-          m[i][j] = -2;
+          m[i][j] = -0.5;
         } else {
-          m[i][j] = -4;
+          m[i][j] = -1;
         }
       }
     }
@@ -103,7 +103,7 @@ main(int argc, char * argv[])
   PDESolver * solver = nullptr;
   switch (algo) {
     case 0: {
-      Real w = 2 / (1 + 2 * std::acos(static_cast<Real>(0)) / (n + 2));
+      Real w = 2 / (1 + 2 * std::sqrt(4.45) / (n + 2));
       solver = new SORSolver(h, h, h, n, n, w);
       break;
     }

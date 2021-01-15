@@ -15,8 +15,6 @@
 #include "Real.hpp"
 #include "SORSolver.hpp"
 
-/* rho / 6 epsilon = 1 */
-
 Real
 pot_axis(Real z, Real a)
 {
@@ -32,9 +30,9 @@ pot_axis(Real z, Real a)
   z = std::abs(z);
   Real v;
   if (z > a) {
-    v = 2 * (r2 * r / z - z2) - 3 * a2;
+    v = (r2 * r / z - z2) / 3 - a2 / 2;
   } else {
-    v = 2 * (r2 * r - a2 * a) / z - 3 * z2;
+    v = (r2 * r - a2 * a) / (3 * z) - z2 / 2;
   }
   return neg ? -v : v;
 }
@@ -78,8 +76,7 @@ main(int argc, char * argv[])
   scientific(errFile);
   scientific(relFile);
 
-  vector<Real> l(n);
-  vector<Real> b(n);
+  vector<Real> zero(n);
   vector<Real> r(n);
   vector<Real> t(n);
   vector<Real> sol(n * n);
@@ -91,24 +88,20 @@ main(int argc, char * argv[])
   long a = n / 8 + 1;
 
   for (int i = 0; i < n; ++i) {
-    an[i] = pot_axis((i - n / 2) * h, a * h);
-    long d2 = (i - n / 2) * (i - n / 2) + (n + 1) * (n + 1);
-    Real coeff = 3 * a * a * a * a * h * h / 4;
-    r[i] = coeff * (i - n / 2) / (d2 * std::sqrt(d2));
-    d2 = (i + 1) * (i + 1) + (n - n / 2) * (n - n / 2);
-    t[i] = coeff * (n - n / 2) / (d2 * std::sqrt(d2));
-    b[i] = coeff * (-1 - n / 2) / (d2 * std::sqrt(d2));
+    an[i] = pot_axis((i + 1) * h, a * h);
+    long d2 = (i + 1) * (i + 1) + (n + 1) * (n + 1);
+    Real coeff = a * a * a * a * h * h / 8;
+    r[i] = coeff * (i + 1) / (d2 * std::sqrt(d2));
+    t[i] = coeff * (n + 1) / (d2 * std::sqrt(d2));
   }
 
   Matrix<Real> m(n, rhs.data());
   for (int i = 0; i < n; ++i) {
     for (int j = 0; j < n; ++j) {
       long r = i + 1;
-      long z = j - n / 2;
-      if (z == 0) {
-        m[i][j] = 0;
-      } else if (r * r + z * z < a * a) {
-        m[i][j] = z > 0 ? -6 : 6;
+      long z = j + 1;
+      if (r * r + z * z <= a * a) {
+        m[i][j] = -1;
       } else {
         m[i][j] = 0;
       }
@@ -118,23 +111,23 @@ main(int argc, char * argv[])
   PDE pde;
   pde.next_value = CylinderPDE::next_value;
   pde.residual = CylinderPDE::residual;
-  pde.bottom = b.data();
+  pde.bottom = zero.data();
+  pde.left = zero.data();
   pde.right = r.data();
-  pde.left = l.data();
   pde.top = t.data();
   pde.neum = LEFTBNDRY;
   pde.rhs = rhs.data();
 
-  Real w = 2 / (1 + 2 * std::acos(static_cast<Real>(0)) / (n + 2));
-  SORSolver solvFast(h, -n / 2 * h, h, n, n, w);
+  Real w = 2 / (1 + 2 * std::sqrt(4.45) / (n + 2));
+  SORSolver solvFast(h, h, h, n, n, w);
 
   PDESolver * solvSlow = nullptr;
   switch (algo) {
     case 1:
-      solvSlow = new GSeidelSolver(h, -n / 2 * h, h, n, n);
+      solvSlow = new GSeidelSolver(h, h, h, n, n);
       break;
     case 2:
-      solvSlow = new JacobiSolver(h, -n / 2 * h, h, n, n);
+      solvSlow = new JacobiSolver(h, h, h, n, n);
       break;
   }
 
@@ -181,7 +174,7 @@ main(int argc, char * argv[])
         relFile << "# " << globalIter << " " << err << " " << res << "\n";
 
         for (long j = 0; j < n; ++j) {
-          Real y = (j - n / 2) * h;
+          Real y = (j + 1) * h;
 
           axisFile << y << "\t" << m[0][j] << "\n";
 
