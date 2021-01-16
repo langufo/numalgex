@@ -70,7 +70,7 @@ int main(int argc, char *argv[]) {
   /* preparo condizione al bordo e soluzione esatta */
   for (long j = 0; j < n; ++j) {
     an[j] = pot_axis((j + 1) * h, a2 * h2, 2 * halfHeight * h);
-    nonzero[j] = 0.5 * a2 * halfHeight * 2 /
+    nonzero[j] = 0.5 * a2 * halfHeight * h2 /
                  sqrt((j + 1) * (j + 1) + (n + 1) * (n + 1));
   }
 
