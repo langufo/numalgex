@@ -22,7 +22,7 @@ public:
   /**
    * Imposta l'indirizzo di memoria del primo elemento della
    * matrice.
-   * @param data Puntatore al primo elemento.
+   * @param data Puntatore al primo elemento
    */
   void set_first_elem(T *data) { p = data; }
 
@@ -33,7 +33,7 @@ private:
   int n;
 
   /**
-   * Primo elemento della matrice.
+   * Primo elemento della matrice
    */
   T *p;
 };
