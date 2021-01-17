@@ -40,7 +40,7 @@ struct PDE {
    * @param rhs Right-hand side dell'equazione, valutato nel
    * punto (x,y)
    * @param neum Indica i lati per i quali è fornita la
-   * derivata invece che del valore della funzione
+   * derivata al posto del valore della funzione
    * @param bottom Valore per il punto (x,y-h)
    * @param top Valore per il punto (x,y+h)
    * @param left Valore per il punto (x-h,y)
